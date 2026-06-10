@@ -1,0 +1,240 @@
+:root {
+  color: #202124;
+  background: #f6f7f9;
+  font-family:
+    "Microsoft YaHei",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(280px, 360px) minmax(420px, 1fr);
+  width: 100%;
+  height: 100%;
+  background: #f6f7f9;
+}
+
+.notebook-pane,
+.note-list-pane,
+.editor-pane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.notebook-pane {
+  border-right: 1px solid #dfe3e8;
+  background: #eef2f5;
+}
+
+.note-list-pane {
+  border-right: 1px solid #dfe3e8;
+  background: #fafbfc;
+}
+
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.pane-header,
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid #dfe3e8;
+}
+
+.split {
+  justify-content: space-between;
+}
+
+.app-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.notebook-list,
+.note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+}
+
+.note-empty,
+.editor-empty {
+  color: #68717d;
+}
+
+.note-empty {
+  padding: 18px;
+  font-size: 14px;
+}
+
+.notebook-item,
+.note-card {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #202124;
+  text-align: left;
+  cursor: default;
+}
+
+.notebook-item {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.notebook-item.child {
+  padding-left: 24px;
+}
+
+.notebook-item.active,
+.note-card.active {
+  background: #dbeafe;
+}
+
+.notebook-section-title,
+.notebook-hint {
+  padding: 8px 12px 4px;
+  color: #68717d;
+  font-size: 12px;
+}
+
+.notebook-hint.error {
+  color: #b42318;
+}
+
+.note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 78px;
+  padding: 12px;
+}
+
+.note-title {
+  font-weight: 650;
+}
+
+.note-preview {
+  color: #68717d;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cfd6dd;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.title-input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: #202124;
+  font-size: 24px;
+  font-weight: 700;
+  background: transparent;
+}
+
+.title-input:disabled {
+  color: #8b949e;
+}
+
+.editor-surface {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 28px 36px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  color: #202124;
+  background: #ffffff;
+  font-size: 16px;
+  overflow: auto;
+  line-height: 1.8;
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.save-status {
+  min-width: 82px;
+  color: #68717d;
+  font-size: 13px;
+  text-align: right;
+}
+
+.save-status.saving {
+  color: #2563eb;
+}
+
+.text-button {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #cfd6dd;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #202124;
+}
+
+.text-button:disabled {
+  color: #9aa3ad;
+}
+
+.text-button.danger:not(:disabled) {
+  color: #b42318;
+}
+
+.error-message {
+  margin: 0;
+  padding: 10px 36px;
+  border-bottom: 1px solid #f3c7c3;
+  background: #fff1f0;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.editor-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+out/
+release/
+*.log
+*.local
+
+.DS_Store
+Thumbs.db
+
+.env
+.env.*
+!.env.example
+
+apps/*/node_modules/
+packages/*/node_modules/
+家庭服务器与私人云笔记计划书.md
