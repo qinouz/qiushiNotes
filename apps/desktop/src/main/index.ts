@@ -1,13 +1,16 @@
 import { app, BrowserWindow } from 'electron'
+import path from 'node:path'
 import { closeDatabase, initializeDatabase } from './db/database'
 import { registerNotebooksIpcHandlers } from './ipc/notebooks-ipc'
 import { registerNotesIpcHandlers } from './ipc/notes-ipc'
 import { ensureDefaultNotebook } from './services/notebook-service'
 import { createMainWindow } from './window'
 
-// 这个名字会影响窗口标题以外的一些系统路径，例如 app.getPath('userData')。
-// 尽早设置，避免真实数据目录落到 package 名 `desktop` 下。
-app.setName('秋实笔记')
+// Electron 的 app name 会影响 app.getPath('userData')。
+// 内部目录使用 ASCII 名，避免 Windows cmd.exe / 脚本工具显示中文路径时乱码；
+// 窗口标题和 UI 仍然使用中文“秋实笔记”。
+app.setName('QiushiNotes')
+app.setPath('userData', path.join(app.getPath('appData'), 'QiushiNotes'))
 
 app.whenReady().then(() => {
   // 数据库必须先于窗口初始化。

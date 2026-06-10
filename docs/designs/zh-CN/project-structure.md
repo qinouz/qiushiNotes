@@ -251,7 +251,7 @@ app.getPath('userData')
 运行时目录：
 
 ```text
-userData/
+C:\Users\<用户名>\AppData\Roaming\QiushiNotes\
   notes.db
   attachments/
   backups/
@@ -259,6 +259,8 @@ userData/
 ```
 
 所有路径使用 `path.join(...)`。
+
+UI 可以显示中文名称，但内部数据目录使用 ASCII 名 `QiushiNotes`，避免 Windows 终端和脚本工具出现中文路径乱码。
 
 ## Shared 包
 

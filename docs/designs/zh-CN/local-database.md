@@ -192,7 +192,7 @@ updated_at
 运行时数据目录：
 
 ```text
-app.getPath('userData')/
+C:\Users\<用户名>\AppData\Roaming\QiushiNotes\
   notes.db
   attachments/
   backups/
@@ -200,6 +200,12 @@ app.getPath('userData')/
 ```
 
 仓库中不能保存真实用户笔记、附件、备份或导出文件。
+
+说明：
+
+- UI 和窗口标题使用中文“秋实笔记”。
+- 内部 `userData` 目录使用 ASCII 名 `QiushiNotes`，避免 Windows `cmd.exe` 或脚本工具显示中文路径时乱码。
+- 早期开发版本如果已经创建了 `AppData\Roaming\秋实笔记\notes.db`，应用启动时会在新目录没有数据库的情况下自动迁移一次。
 
 ## IPC / API 边界
 
@@ -314,4 +320,3 @@ conflicted
 - 增加数据库诊断。
 - 增加导出服务。
 - 为每个功能模块增加类型化 repository。
-
