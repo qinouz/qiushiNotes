@@ -43,6 +43,20 @@ Defer these until the local app is stable:
 
 ## Design Documentation Rule
 
+Before implementing a major feature area or changing first-version scope, create or update the relevant PRD first.
+
+PRD documents live under:
+
+```text
+docs/prd/zh-CN/
+```
+
+The first-version PRD is:
+
+```text
+docs/prd/zh-CN/v1-local-first-desktop.md
+```
+
 Before implementing any feature module, create or update a design document first.
 
 Design documents live under:
