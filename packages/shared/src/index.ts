@@ -12,6 +12,15 @@ export interface ListNotesInput {
   notebookId?: string | null
 }
 
+export interface CreateNotebookInput {
+  parentId?: string | null
+  name?: string
+}
+
+export interface UpdateNotebookPatch {
+  name?: string
+}
+
 export interface UpdateNotePatch {
   notebookId?: string | null
   title?: string
@@ -47,6 +56,20 @@ export interface NotebookSummary {
   updatedAt: string
   deletedAt: string | null
   syncStatus: SyncStatus
+}
+
+export type NoteTreeNodeType = 'notebook' | 'note'
+
+export interface NoteTreeNode {
+  type: NoteTreeNodeType
+  id: string
+  name: string
+  depth: number
+  isExpanded: boolean
+  notebookId?: string
+  noteId?: string
+  contentPreview?: string
+  updatedAt?: string
 }
 
 const displayNameCollator = new Intl.Collator('en-US', {

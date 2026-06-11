@@ -109,6 +109,8 @@ preload API：
 ```ts
 window.qiushi.notebooks.list()
 window.qiushi.notebooks.ensureDefault()
+window.qiushi.notebooks.create({ parentId, name })
+window.qiushi.notebooks.update(id, { name })
 ```
 
 IPC 通道：
@@ -116,6 +118,8 @@ IPC 通道：
 ```text
 notebooks:list
 notebooks:ensure-default
+notebooks:create
+notebooks:update
 ```
 
 main 进程结构：
@@ -156,6 +160,58 @@ window.qiushi.notes.create({ notebookId })
 - 启动时确保默认笔记本。
 - renderer 加载失败时显示错误信息。
 - 如果没有选中具体笔记本，新建笔记时使用默认笔记本。
+- 新建子笔记本时，如果父笔记本不存在或已被删除，main 进程拒绝创建。
+- 重命名时会修剪空白；空名称会回退为“新建笔记本”，避免 UI 出现不可点击的空白节点。
+
+## 当前增量：笔记本创建、子级和重命名
+
+本增量把左侧笔记本从“只读列表”推进到可管理的多级树，仍然坚持本地优先和软删除底线。
+
+目标：
+
+- 可以新建顶层笔记本。
+- 可以在任意现有笔记本下创建子笔记本。
+- 可以重命名笔记本。
+- 左侧按父子关系缩进显示，至少支持 5 层。
+- 所有写入先进入本地 SQLite，并维护 `version` 与 `sync_status`。
+
+非目标：
+
+- 不实现笔记本删除，避免在没有完整回收站和恢复策略时影响已有笔记。
+- 不实现拖拽排序。
+- 不实现笔记移动；后续应在编辑器或列表中提供明确入口。
+- 不持久化展开/折叠状态；当前先全部展开。
+
+UI 行为：
+
+- “笔记本”标题行右侧提供新建顶层笔记本按钮。
+- 每个笔记本行提供创建子笔记本和重命名入口。
+- 新建成功后自动选中新笔记本，后续新建笔记会归入该笔记本。
+- 重命名失败时在左侧栏显示错误信息，不清空已有列表。
+
+数据和同步影响：
+
+- 新建笔记本使用 UUID。
+- `parent_id` 指向父笔记本；顶层笔记本为 `NULL`。
+- `sort_order` 使用同级最大值加一，保证同级节点稳定追加。
+- 创建记录使用 `sync_status = 'local'`。
+- 重命名记录更新 `updated_at`、`version = version + 1`、`sync_status = 'pending'`。
+
+输入校验：
+
+- `name` 必须是字符串；修剪后为空时使用“新建笔记本”。
+- 名称长度限制为 80 个字符，避免异常长文本破坏侧栏布局。
+- `parentId` 如果存在，必须指向未删除笔记本。
+- renderer 传入的对象不可信，main service 负责兜底校验。
+
+测试计划补充：
+
+- 类型检查通过。
+- 构建通过。
+- 新建顶层笔记本后左侧出现节点，并能被选中。
+- 新建子笔记本后左侧以缩进显示。
+- 重命名后重启应用仍保留新名称。
+- 使用不存在的 `parentId` 创建子笔记本会失败，不产生孤儿节点。
 
 ## Electron 学习点
 
@@ -184,9 +240,7 @@ NotebookSidebar
 
 ## 后续改进
 
-- 新建笔记本。
-- 重命名笔记本。
 - 删除笔记本。
-- 多级树。
 - 拖拽排序。
 - 笔记移动。
+- 展开/折叠状态持久化。

@@ -1,68 +1,68 @@
 <script setup lang="ts">
+import { onMounted, onBeforeUnmount, ref } from 'vue'
 import NoteEditor from '../features/notes/NoteEditor.vue'
-import NoteList from '../features/notes/NoteList.vue'
-import { useNotes } from '../features/notes/useNotes'
-import NotebookSidebar from '../features/notebooks/NotebookSidebar.vue'
-import { useNotebooks } from '../features/notebooks/useNotebooks'
-import { watch } from 'vue'
+import { useNoteTree } from '../features/notebooks/useNoteTree'
+import FunctionBar from './FunctionBar.vue'
+import MiddlePane from './MiddlePane.vue'
 
-const appName = window.qiushi.app.getName()
+const activeView = ref('notes')
 
 const {
-  notebooks,
-  selectedNotebookId,
-  selectedNotebookName,
-  defaultNotebookId,
-  isLoadingNotebooks,
-  notebookError,
-  selectAllNotes,
-  selectNotebook
-} = useNotebooks()
-
-const {
-  notes,
+  treeNodes,
   selectedNote,
+  selectedNodeId,
+  searchQuery,
+  isLoading,
+  errorMessage,
   draftTitle,
   draftContent,
-  isLoading,
   isSaving,
   saveStatus,
-  errorMessage,
-  setActiveNotebook,
-  setDefaultNotebook,
-  selectNote,
+  selectNode,
+  toggleNotebook,
+  createNotebook,
+  renameNotebook,
   createNote,
+  createNoteInNotebook,
   deleteCurrentNote
-} = useNotes()
+} = useNoteTree()
 
-watch(selectedNotebookId, (notebookId) => {
-  void setActiveNotebook(notebookId)
+function handleKeydown(event: KeyboardEvent): void {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
+    event.preventDefault()
+    void createNote('note')
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
 })
 
-watch(defaultNotebookId, (notebookId) => {
-  setDefaultNotebook(notebookId)
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
   <main class="app-shell">
-    <NotebookSidebar
-      :app-name="appName"
-      :notebooks="notebooks"
-      :selected-notebook-id="selectedNotebookId"
-      :is-loading="isLoadingNotebooks"
-      :error-message="notebookError"
-      @select-all="selectAllNotes"
-      @select-notebook="selectNotebook"
+    <FunctionBar
+      :active-view="activeView"
+      @navigate="activeView = $event"
     />
 
-    <NoteList
-      :title="selectedNotebookName"
-      :notes="notes"
-      :selected-note-id="selectedNote?.id ?? null"
+    <MiddlePane
+      :nodes="treeNodes"
+      :selected-node-id="selectedNodeId"
+      v-model:search-query="searchQuery"
       :is-loading="isLoading"
-      @create="createNote"
-      @select="selectNote"
+      :error-message="errorMessage"
+      @select-notebook="selectNode"
+      @toggle-notebook="toggleNotebook"
+      @select-note="selectNode"
+      @create-notebook="createNotebook"
+      @rename-notebook="(id, name) => renameNotebook(id, name)"
+      @create-note="createNote"
+      @create-note-in-notebook="(notebookId, type) => createNoteInNotebook(notebookId, type)"
     />
 
     <NoteEditor

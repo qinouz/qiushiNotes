@@ -16,7 +16,9 @@ const api: QiushiApi = {
   },
   notebooks: {
     list: () => ipcRenderer.invoke('notebooks:list'),
-    ensureDefault: () => ipcRenderer.invoke('notebooks:ensure-default')
+    ensureDefault: () => ipcRenderer.invoke('notebooks:ensure-default'),
+    create: (input) => ipcRenderer.invoke('notebooks:create', input),
+    update: (id, patch) => ipcRenderer.invoke('notebooks:update', id, patch)
   }
 }
 

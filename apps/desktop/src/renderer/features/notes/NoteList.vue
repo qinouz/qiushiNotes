@@ -1,26 +1,20 @@
 <script setup lang="ts">
 import type { NoteSummary } from '@qiushi-notes/shared'
+import { FileText } from '@lucide/vue'
 
 defineProps<{
-  title: string
   notes: NoteSummary[]
   selectedNoteId: string | null
   isLoading: boolean
 }>()
 
 const emit = defineEmits<{
-  create: []
   select: [id: string]
 }>()
 </script>
 
 <template>
-  <section class="note-list-pane" aria-label="笔记列表">
-    <header class="pane-header split">
-      <span>{{ title }}</span>
-      <button class="icon-button" type="button" aria-label="新建笔记" @click="emit('create')">+</button>
-    </header>
-
+  <div class="note-list-container">
     <div v-if="isLoading" class="note-empty">正在加载</div>
     <div v-else-if="notes.length === 0" class="note-empty">暂无笔记</div>
     <div v-else class="note-list">
@@ -32,9 +26,12 @@ const emit = defineEmits<{
         type="button"
         @click="emit('select', note.id)"
       >
-        <span class="note-title">{{ note.title }}</span>
-        <span class="note-preview">{{ note.contentPreview || ' ' }}</span>
+        <FileText class="note-icon" :size="16" :stroke-width="1.8" />
+        <div class="note-info">
+          <span class="note-title">{{ note.title }}</span>
+          <span class="note-preview">{{ note.contentPreview || ' ' }}</span>
+        </div>
       </button>
     </div>
-  </section>
+  </div>
 </template>
