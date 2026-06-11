@@ -205,6 +205,41 @@ Prioritize:
 
 Avoid decorative UI, complex animation, and non-core features in the first version.
 
+## Agent Workflow Guidance
+
+This repository includes project-specific agent workflow guidance under:
+
+```text
+docs/agent-guidance/zh-CN/
+```
+
+Use these files selectively. Do not load every workflow or persona by default.
+
+Available workflow files:
+
+- `docs/agent-guidance/zh-CN/skills/spec-driven-development.md`
+- `docs/agent-guidance/zh-CN/skills/doubt-driven-development.md`
+- `docs/agent-guidance/zh-CN/skills/security-and-hardening.md`
+- `docs/agent-guidance/zh-CN/skills/test-driven-development.md`
+- `docs/agent-guidance/zh-CN/skills/code-review-and-quality.md`
+- `docs/agent-guidance/zh-CN/skills/source-driven-development.md`
+
+Available persona files:
+
+- `docs/agent-guidance/zh-CN/personas/code-reviewer.md`
+- `docs/agent-guidance/zh-CN/personas/test-engineer.md`
+- `docs/agent-guidance/zh-CN/personas/security-auditor.md`
+- `docs/agent-guidance/zh-CN/personas/web-performance-auditor.md`
+
+Default trigger rules:
+
+- For any non-trivial feature module, read `spec-driven-development.md` before coding and update the relevant Chinese design document in `docs/designs/zh-CN/`.
+- For changes involving framework APIs, Electron, Vue, TipTap, SQLite, Vite, or dependency behavior, read `source-driven-development.md` and verify claims against local versions and official sources.
+- For changes involving local data, SQLite migrations, soft delete, restore, import/export, backup, attachments, file paths, IPC boundaries, or sync-related fields, read `doubt-driven-development.md` and `security-and-hardening.md`.
+- When adding or changing behavior, read `test-driven-development.md` and add tests or explicit verification steps proportional to the risk.
+- Before finishing a substantial change, use `code-review-and-quality.md` or the `code-reviewer.md` persona for a final self-review.
+- For renderer performance, startup speed, long lists, search responsiveness, or measured Web performance work, use `web-performance-auditor.md`. If no measurement artifact exists, report only source-level potential impact and do not invent metrics.
+
 ## Reference
 
 The longer human-readable planning document is:
