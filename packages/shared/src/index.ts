@@ -1,3 +1,5 @@
+import { pinyin } from 'pinyin-pro'
+
 export type SyncStatus = 'local' | 'pending' | 'synced' | 'conflicted'
 
 export interface CreateNoteInput {
@@ -45,4 +47,37 @@ export interface NotebookSummary {
   updatedAt: string
   deletedAt: string | null
   syncStatus: SyncStatus
+}
+
+const displayNameCollator = new Intl.Collator('en-US', {
+  numeric: true,
+  sensitivity: 'base'
+})
+
+export function compareDisplayText(left: string, right: string): number {
+  const leftKey = toDisplaySortKey(left)
+  const rightKey = toDisplaySortKey(right)
+  const keyOrder = displayNameCollator.compare(leftKey, rightKey)
+
+  if (keyOrder !== 0) {
+    return keyOrder
+  }
+
+  return displayNameCollator.compare(left.trim(), right.trim())
+}
+
+function toDisplaySortKey(value: string): string {
+  const normalized = value.trim().normalize('NFKC')
+
+  if (!normalized) {
+    return ''
+  }
+
+  // 用拼音排序键模拟常见笔记软件的“首字母排序”：中文按拼音，英文保留字母，数字交给 Intl 做自然排序。
+  return pinyin(normalized, {
+    toneType: 'none',
+    type: 'array'
+  })
+    .join('')
+    .toLocaleLowerCase('en-US')
 }

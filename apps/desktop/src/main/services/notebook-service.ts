@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { NotebookSummary } from '@qiushi-notes/shared'
+import { compareDisplayText, type NotebookSummary } from '@qiushi-notes/shared'
 import { getDatabaseContext } from '../db/database'
 
 interface NotebookRow {
@@ -72,7 +72,7 @@ export function listNotebooks(): NotebookSummary[] {
     )
     .all() as unknown as NotebookRow[]
 
-  return rows.map(mapNotebookRow)
+  return rows.map(mapNotebookRow).sort(compareNotebookSummariesForDisplay)
 }
 
 function findDefaultNotebook(): NotebookSummary | null {
@@ -131,4 +131,23 @@ function mapNotebookRow(row: NotebookRow): NotebookSummary {
     deletedAt: row.deleted_at,
     syncStatus: row.sync_status
   }
+}
+
+function compareNotebookSummariesForDisplay(
+  left: NotebookSummary,
+  right: NotebookSummary
+): number {
+  const sortOrder = left.sortOrder - right.sortOrder
+
+  if (sortOrder !== 0) {
+    return sortOrder
+  }
+
+  const nameOrder = compareDisplayText(left.name, right.name)
+
+  if (nameOrder !== 0) {
+    return nameOrder
+  }
+
+  return left.id.localeCompare(right.id)
 }

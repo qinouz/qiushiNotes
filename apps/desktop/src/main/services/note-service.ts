@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import type {
-  CreateNoteInput,
-  ListNotesInput,
-  NoteDetail,
-  NoteSummary,
-  UpdateNotePatch
+import {
+  compareDisplayText,
+  type CreateNoteInput,
+  type ListNotesInput,
+  type NoteDetail,
+  type NoteSummary,
+  type UpdateNotePatch
 } from '@qiushi-notes/shared'
 import { getDatabaseContext } from '../db/database'
 
@@ -49,12 +50,12 @@ export function listNotes(input: ListNotesInput = {}): NoteSummary[] {
         FROM notes
         WHERE deleted_at IS NULL
           AND (? = 0 OR notebook_id = ?)
-        ORDER BY is_pinned DESC, updated_at DESC
       `
     )
     .all(shouldFilterByNotebook ? 1 : 0, input.notebookId ?? null) as unknown as NoteSummaryRow[]
 
-  return rows.map(mapSummaryRow)
+  // 默认浏览顺序按标题/拼音稳定排序，不能因为自动保存更新 updated_at 就让当前笔记跳到列表顶部。
+  return rows.map(mapSummaryRow).sort(compareNoteSummariesForDisplay)
 }
 
 export function getNote(id: string): NoteDetail | null {
@@ -222,6 +223,20 @@ function mapDetailRow(row: NoteDetailRow): NoteDetail {
     createdAt: row.created_at,
     version: row.version
   }
+}
+
+function compareNoteSummariesForDisplay(left: NoteSummary, right: NoteSummary): number {
+  if (left.isPinned !== right.isPinned) {
+    return left.isPinned ? -1 : 1
+  }
+
+  const titleOrder = compareDisplayText(left.title, right.title)
+
+  if (titleOrder !== 0) {
+    return titleOrder
+  }
+
+  return left.id.localeCompare(right.id)
 }
 
 function normalizeTitle(title: string | undefined): string {

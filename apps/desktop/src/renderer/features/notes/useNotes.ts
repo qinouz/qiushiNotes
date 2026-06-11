@@ -83,8 +83,7 @@ export function useNotes() {
       const created = await window.qiushi.notes.create({
         notebookId: activeNotebookId ?? defaultNotebookId
       })
-      upsertNoteSummary(created)
-      await applySelectedNote(created)
+      await loadNotes(created.id)
     } catch (error) {
       errorMessage.value = getErrorMessage(error)
     }
@@ -154,8 +153,16 @@ export function useNotes() {
       })
 
       if (requestId === saveRequestId) {
-        selectedNote.value = updated
-        upsertNoteSummary(updated)
+        const shouldRefreshSortedList =
+          updated.title !== current.title || updated.isPinned !== current.isPinned
+
+        if (shouldRefreshSortedList) {
+          await loadNotes(updated.id)
+        } else {
+          selectedNote.value = updated
+          upsertNoteSummary(updated)
+        }
+
         saveStatus.value = '已保存'
       }
     } catch (error) {
@@ -193,13 +200,7 @@ export function useNotes() {
       notes.value.unshift(summary)
     }
 
-    notes.value = [...notes.value].sort((a, b) => {
-      if (a.isPinned !== b.isPinned) {
-        return a.isPinned ? -1 : 1
-      }
-
-      return b.updatedAt.localeCompare(a.updatedAt)
-    })
+    notes.value = [...notes.value]
   }
 
   function toSummary(note: NoteDetail): NoteSummary {
