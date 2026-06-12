@@ -1,11 +1,13 @@
 import { pinyin } from 'pinyin-pro'
 
 export type SyncStatus = 'local' | 'pending' | 'synced' | 'conflicted'
+export type NoteContentFormat = 'plain-text' | 'markdown'
 
 export interface CreateNoteInput {
   notebookId?: string | null
   title?: string
   content?: string
+  contentFormat?: NoteContentFormat
 }
 
 export interface ListNotesInput {
@@ -34,6 +36,7 @@ export interface NoteSummary {
   title: string
   contentPreview: string
   notebookId: string | null
+  contentFormat: NoteContentFormat
   isFavorite: boolean
   isPinned: boolean
   updatedAt: string
@@ -43,7 +46,6 @@ export interface NoteSummary {
 
 export interface NoteDetail extends NoteSummary {
   content: string
-  contentFormat: string
   createdAt: string
   version: number
 }
@@ -68,6 +70,7 @@ export interface NoteTreeNode {
   isExpanded: boolean
   notebookId?: string
   noteId?: string
+  contentFormat?: NoteContentFormat
   contentPreview?: string
   updatedAt?: string
 }

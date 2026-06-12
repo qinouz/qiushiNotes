@@ -43,6 +43,9 @@ const contentModel = computed({
       />
 
       <div class="editor-actions">
+        <span v-if="selectedNote?.contentFormat === 'markdown'" class="note-format-badge">
+          Markdown
+        </span>
         <span class="save-status" :class="{ saving: isSaving }">{{ saveStatus }}</span>
         <button
           class="text-button danger"

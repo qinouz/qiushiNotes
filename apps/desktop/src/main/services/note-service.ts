@@ -3,6 +3,7 @@ import {
   compareDisplayText,
   type CreateNoteInput,
   type ListNotesInput,
+  type NoteContentFormat,
   type NoteDetail,
   type NoteSummary,
   type UpdateNotePatch
@@ -14,6 +15,7 @@ interface NoteSummaryRow {
   title: string
   content_preview: string
   notebook_id: string | null
+  content_format: string
   is_favorite: number
   is_pinned: number
   updated_at: string
@@ -23,7 +25,6 @@ interface NoteSummaryRow {
 
 interface NoteDetailRow extends NoteSummaryRow {
   content: string
-  content_format: string
   created_at: string
   version: number
 }
@@ -41,6 +42,7 @@ export function listNotes(input: ListNotesInput = {}): NoteSummary[] {
           id,
           title,
           substr(content, 1, 120) AS content_preview,
+          content_format,
           notebook_id,
           is_favorite,
           is_pinned,
@@ -91,8 +93,10 @@ export function createNote(input: CreateNoteInput = {}): NoteDetail {
   const { db } = getDatabaseContext()
   const id = randomUUID()
   const now = new Date().toISOString()
+  const contentFormat = normalizeContentFormat(input.contentFormat)
 
   // 笔记 ID 在本地生成，未来同步时服务器只接收这个 ID，不再反向决定本地记录身份。
+  // content_format 先区分普通笔记和 Markdown，后续富文本/预览能力可以在这个字段上演进。
   db.prepare(
     `
       INSERT INTO notes (
@@ -108,13 +112,14 @@ export function createNote(input: CreateNoteInput = {}): NoteDetail {
         version,
         sync_status
       )
-      VALUES (?, ?, ?, ?, 'plain-text', 0, 0, ?, ?, 1, 'local')
+      VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 'local')
     `
   ).run(
     id,
     input.notebookId ?? null,
     normalizeTitle(input.title),
     input.content ?? '',
+    contentFormat,
     now,
     now
   )
@@ -207,6 +212,7 @@ function mapSummaryRow(row: NoteSummaryRow): NoteSummary {
     title: row.title || DEFAULT_NOTE_TITLE,
     contentPreview: row.content_preview ?? '',
     notebookId: row.notebook_id,
+    contentFormat: normalizeContentFormat(row.content_format),
     isFavorite: row.is_favorite === 1,
     isPinned: row.is_pinned === 1,
     updatedAt: row.updated_at,
@@ -219,7 +225,6 @@ function mapDetailRow(row: NoteDetailRow): NoteDetail {
   return {
     ...mapSummaryRow(row),
     content: row.content,
-    contentFormat: row.content_format,
     createdAt: row.created_at,
     version: row.version
   }
@@ -242,6 +247,10 @@ function compareNoteSummariesForDisplay(left: NoteSummary, right: NoteSummary): 
 function normalizeTitle(title: string | undefined): string {
   const trimmed = title?.trim()
   return trimmed && trimmed.length > 0 ? trimmed : DEFAULT_NOTE_TITLE
+}
+
+function normalizeContentFormat(format: string | undefined): NoteContentFormat {
+  return format === 'markdown' ? 'markdown' : 'plain-text'
 }
 
 function hasOwn<T extends object>(value: T, key: PropertyKey): boolean {

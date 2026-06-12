@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import NoteEditor from '../features/notes/NoteEditor.vue'
+import FolderContentView from '../features/notebooks/FolderContentView.vue'
 import { useNoteTree } from '../features/notebooks/useNoteTree'
 import FunctionBar from './FunctionBar.vue'
 import MiddlePane from './MiddlePane.vue'
@@ -11,6 +12,9 @@ const {
   treeNodes,
   selectedNote,
   selectedNodeId,
+  selectedNotebook,
+  selectedNotebookPath,
+  folderContentItems,
   searchQuery,
   isLoading,
   errorMessage,
@@ -66,6 +70,7 @@ onBeforeUnmount(() => {
     />
 
     <NoteEditor
+      v-if="selectedNote"
       v-model:title="draftTitle"
       v-model:content="draftContent"
       :selected-note="selectedNote"
@@ -73,6 +78,16 @@ onBeforeUnmount(() => {
       :save-status="saveStatus"
       :error-message="errorMessage"
       @delete="deleteCurrentNote"
+    />
+    <FolderContentView
+      v-else
+      :notebook="selectedNotebook"
+      :path="selectedNotebookPath"
+      :items="folderContentItems"
+      @open-notebook="selectNode"
+      @open-note="selectNode"
+      @create-note="createNote"
+      @create-notebook="createNotebook"
     />
   </main>
 </template>

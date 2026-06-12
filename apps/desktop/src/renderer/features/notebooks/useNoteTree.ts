@@ -1,7 +1,31 @@
-import { compareDisplayText, type NoteDetail, type NoteSummary, type NoteTreeNode, type NotebookSummary } from '@qiushi-notes/shared'
+import {
+  compareDisplayText,
+  type NoteContentFormat,
+  type NoteDetail,
+  type NoteSummary,
+  type NoteTreeNode,
+  type NotebookSummary
+} from '@qiushi-notes/shared'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const AUTO_SAVE_DELAY_MS = 800
+type CreateNoteKind = 'note' | 'markdown'
+
+export type FolderContentItem =
+  | {
+      id: string
+      type: 'notebook'
+      title: string
+      updatedAt: string
+    }
+  | {
+      id: string
+      type: 'note'
+      title: string
+      contentPreview: string
+      contentFormat: NoteContentFormat
+      updatedAt: string
+    }
 
 export function useNoteTree() {
   const notebooks = ref<NotebookSummary[]>([])
@@ -25,6 +49,17 @@ export function useNoteTree() {
 
   const treeNodes = computed<NoteTreeNode[]>(() =>
     buildTree(notebooks.value, notes.value, expandedNotebookIds.value, searchQuery.value)
+  )
+  const selectedNotebook = computed(() =>
+    selectedNotebookId.value
+      ? notebooks.value.find((notebook) => notebook.id === selectedNotebookId.value) ?? null
+      : null
+  )
+  const selectedNotebookPath = computed(() =>
+    selectedNotebookId.value ? buildNotebookPath(notebooks.value, selectedNotebookId.value) : []
+  )
+  const folderContentItems = computed<FolderContentItem[]>(() =>
+    buildFolderContentItems(notebooks.value, notes.value, selectedNotebookId.value)
   )
 
   onMounted(() => {
@@ -195,7 +230,7 @@ export function useNoteTree() {
     }
   }
 
-  async function createNote(_type = 'note'): Promise<void> {
+  async function createNote(kind: CreateNoteKind = 'note'): Promise<void> {
     await flushPendingSave()
     errorMessage.value = ''
 
@@ -207,7 +242,8 @@ export function useNoteTree() {
       }
 
       const created = await window.qiushi.notes.create({
-        notebookId: targetNotebookId ?? undefined
+        notebookId: targetNotebookId ?? undefined,
+        contentFormat: toContentFormat(kind)
       })
       await loadTree(created.id)
     } catch (error) {
@@ -215,13 +251,16 @@ export function useNoteTree() {
     }
   }
 
-  async function createNoteInNotebook(notebookId: string, _type = 'note'): Promise<void> {
+  async function createNoteInNotebook(notebookId: string, kind: CreateNoteKind = 'note'): Promise<void> {
     await flushPendingSave()
     errorMessage.value = ''
 
     try {
       expandNotebook(notebookId)
-      const created = await window.qiushi.notes.create({ notebookId })
+      const created = await window.qiushi.notes.create({
+        notebookId,
+        contentFormat: toContentFormat(kind)
+      })
       await loadTree(created.id)
     } catch (error) {
       errorMessage.value = getErrorMessage(error, '创建笔记失败')
@@ -350,6 +389,9 @@ export function useNoteTree() {
     selectedNote,
     selectedNodeId,
     selectedNotebookId,
+    selectedNotebook,
+    selectedNotebookPath,
+    folderContentItems,
     searchQuery,
     isLoading,
     errorMessage,
@@ -488,6 +530,7 @@ function mapNoteNode(note: NoteSummary, depth: number): NoteTreeNode {
     depth,
     isExpanded: false,
     noteId: note.id,
+    contentFormat: note.contentFormat,
     contentPreview: note.contentPreview,
     updatedAt: note.updatedAt
   }
@@ -507,6 +550,7 @@ function toSummary(note: NoteDetail): NoteSummary {
     title: note.title,
     contentPreview: note.content.slice(0, 120),
     notebookId: note.notebookId,
+    contentFormat: note.contentFormat,
     isFavorite: note.isFavorite,
     isPinned: note.isPinned,
     updatedAt: note.updatedAt,
@@ -517,4 +561,55 @@ function toSummary(note: NoteDetail): NoteSummary {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
+}
+
+function buildFolderContentItems(
+  notebooks: NotebookSummary[],
+  notes: NoteSummary[],
+  notebookId: string | null
+): FolderContentItem[] {
+  const childNotebooks: FolderContentItem[] = notebooks
+    .filter((notebook) => notebook.parentId === notebookId)
+    .map((notebook) => ({
+      id: notebook.id,
+      type: 'notebook',
+      title: notebook.name,
+      updatedAt: notebook.updatedAt
+    }))
+
+  const childNotes: FolderContentItem[] = notes
+    .filter((note) => note.notebookId === notebookId)
+    .map((note) => ({
+      id: note.id,
+      type: 'note',
+      title: note.title,
+      contentPreview: note.contentPreview,
+      contentFormat: note.contentFormat,
+      updatedAt: note.updatedAt
+    }))
+
+  return [...childNotebooks.sort(compareFolderItems), ...childNotes.sort(compareFolderItems)]
+}
+
+function compareFolderItems(left: FolderContentItem, right: FolderContentItem): number {
+  return compareDisplayText(left.title, right.title)
+}
+
+function buildNotebookPath(notebooks: NotebookSummary[], notebookId: string): NotebookSummary[] {
+  const notebookById = new Map(notebooks.map((notebook) => [notebook.id, notebook]))
+  const path: NotebookSummary[] = []
+  const visited = new Set<string>()
+  let current = notebookById.get(notebookId)
+
+  while (current && !visited.has(current.id)) {
+    path.unshift(current)
+    visited.add(current.id)
+    current = current.parentId ? notebookById.get(current.parentId) : undefined
+  }
+
+  return path
+}
+
+function toContentFormat(kind: CreateNoteKind): NoteContentFormat {
+  return kind === 'markdown' ? 'markdown' : 'plain-text'
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NoteTreeNode } from '@qiushi-notes/shared'
-import { FileText, FolderPlus, Search } from '@lucide/vue'
+import { FileText, FolderPlus, NotebookPen, Search } from '@lucide/vue'
 import NoteTree from '../features/notebooks/NoteTree.vue'
 import DropdownMenu from '../components/DropdownMenu.vue'
 import type { MenuItem } from '../components/DropdownMenu.vue'
@@ -19,13 +19,14 @@ const emit = defineEmits<{
   selectNote: [id: string]
   createNotebook: [parentId?: string | null]
   renameNotebook: [id: string, name: string]
-  createNote: [type: string]
-  createNoteInNotebook: [notebookId: string, type: string]
+  createNote: [type: 'note' | 'markdown']
+  createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown']
   'update:searchQuery': [value: string]
 }>()
 
 const newNoteMenuItems: MenuItem[] = [
   { id: 'note', icon: FileText, label: '普通笔记', shortcut: 'Ctrl+N' },
+  { id: 'markdown', icon: NotebookPen, label: 'Markdown 笔记' },
   { id: 'folder', icon: FolderPlus, label: '文件夹' }
 ]
 
@@ -33,7 +34,7 @@ function handleMenuSelect(id: string): void {
   if (id === 'folder') {
     emit('createNotebook')
   } else {
-    emit('createNote', id)
+    emit('createNote', id === 'markdown' ? 'markdown' : 'note')
   }
 }
 

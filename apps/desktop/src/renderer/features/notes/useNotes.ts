@@ -209,6 +209,7 @@ export function useNotes() {
       title: note.title,
       contentPreview: note.content.slice(0, 120),
       notebookId: note.notebookId,
+      contentFormat: note.contentFormat,
       isFavorite: note.isFavorite,
       isPinned: note.isPinned,
       updatedAt: note.updatedAt,

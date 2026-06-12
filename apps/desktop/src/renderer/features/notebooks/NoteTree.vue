@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NoteTreeNode } from '@qiushi-notes/shared'
-import { ChevronRight, FileText, Folder, FolderOpen, FolderPlus, Pencil } from '@lucide/vue'
+import { ChevronRight, FileText, Folder, FolderOpen, FolderPlus, NotebookPen, Pencil } from '@lucide/vue'
 import DropdownMenu from '../../components/DropdownMenu.vue'
 import type { MenuItem } from '../../components/DropdownMenu.vue'
 
@@ -15,13 +15,14 @@ const emit = defineEmits<{
   selectNotebook: [id: string]
   toggleNotebook: [id: string]
   selectNote: [id: string]
-  createNoteInNotebook: [notebookId: string, type: string]
+  createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown']
   createNotebook: [parentId?: string | null]
   renameNotebook: [id: string, name: string]
 }>()
 
 const newMenuItems: MenuItem[] = [
   { id: 'note', icon: FileText, label: '普通笔记' },
+  { id: 'markdown', icon: NotebookPen, label: 'Markdown 笔记' },
   { id: 'folder', icon: FolderPlus, label: '文件夹' },
   { id: 'rename', icon: Pencil, label: '重命名' }
 ]
@@ -40,7 +41,7 @@ function handleMenuSelect(notebookId: string, menuId: string): void {
   } else if (menuId === 'folder') {
     emit('createNotebook', notebookId)
   } else {
-    emit('createNoteInNotebook', notebookId, menuId)
+    emit('createNoteInNotebook', notebookId, menuId === 'markdown' ? 'markdown' : 'note')
   }
 }
 
@@ -100,6 +101,12 @@ function findNotebookNode(id: string): NoteTreeNode | undefined {
           />
           <Folder
             v-else-if="node.type === 'notebook'"
+            class="tree-node-icon"
+            :size="16"
+            :stroke-width="1.8"
+          />
+          <NotebookPen
+            v-else-if="node.contentFormat === 'markdown'"
             class="tree-node-icon"
             :size="16"
             :stroke-width="1.8"
