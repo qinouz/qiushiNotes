@@ -13,7 +13,7 @@ import { getDatabaseContext } from '../db/database'
 interface NoteSummaryRow {
   id: string
   title: string
-  content_preview: string
+  content: string
   notebook_id: string | null
   content_format: string
   is_favorite: number
@@ -24,12 +24,12 @@ interface NoteSummaryRow {
 }
 
 interface NoteDetailRow extends NoteSummaryRow {
-  content: string
   created_at: string
   version: number
 }
 
 const DEFAULT_NOTE_TITLE = '未命名笔记'
+const EMPTY_TIPTAP_DOCUMENT = '{"type":"doc","content":[{"type":"paragraph"}]}'
 
 export function listNotes(input: ListNotesInput = {}): NoteSummary[] {
   const { db } = getDatabaseContext()
@@ -41,7 +41,7 @@ export function listNotes(input: ListNotesInput = {}): NoteSummary[] {
         SELECT
           id,
           title,
-          substr(content, 1, 120) AS content_preview,
+          substr(content, 1, 4000) AS content,
           content_format,
           notebook_id,
           is_favorite,
@@ -93,10 +93,11 @@ export function createNote(input: CreateNoteInput = {}): NoteDetail {
   const { db } = getDatabaseContext()
   const id = randomUUID()
   const now = new Date().toISOString()
-  const contentFormat = normalizeContentFormat(input.contentFormat)
+  const contentFormat = normalizeContentFormat(input.contentFormat ?? 'tiptap-json')
+  const content = input.content ?? (contentFormat === 'tiptap-json' ? EMPTY_TIPTAP_DOCUMENT : '')
 
   // 笔记 ID 在本地生成，未来同步时服务器只接收这个 ID，不再反向决定本地记录身份。
-  // content_format 先区分普通笔记和 Markdown，后续富文本/预览能力可以在这个字段上演进。
+  // content_format 区分普通富文本、旧纯文本和 Markdown，后续导出/同步可以稳定识别正文结构。
   db.prepare(
     `
       INSERT INTO notes (
@@ -118,7 +119,7 @@ export function createNote(input: CreateNoteInput = {}): NoteDetail {
     id,
     input.notebookId ?? null,
     normalizeTitle(input.title),
-    input.content ?? '',
+    content,
     contentFormat,
     now,
     now
@@ -143,6 +144,9 @@ export function updateNote(id: string, patch: UpdateNotePatch): NoteDetail {
   const nextNotebookId = hasOwn(patch, 'notebookId') ? patch.notebookId ?? null : current.notebookId
   const nextTitle = hasOwn(patch, 'title') ? normalizeTitle(patch.title) : current.title
   const nextContent = hasOwn(patch, 'content') ? patch.content ?? '' : current.content
+  const nextContentFormat = hasOwn(patch, 'contentFormat') && patch.contentFormat !== undefined
+    ? normalizeContentFormat(patch.contentFormat)
+    : current.contentFormat
   const nextFavorite = hasOwn(patch, 'isFavorite') ? Boolean(patch.isFavorite) : current.isFavorite
   const nextPinned = hasOwn(patch, 'isPinned') ? Boolean(patch.isPinned) : current.isPinned
   const now = new Date().toISOString()
@@ -156,6 +160,7 @@ export function updateNote(id: string, patch: UpdateNotePatch): NoteDetail {
         notebook_id = ?,
         title = ?,
         content = ?,
+        content_format = ?,
         is_favorite = ?,
         is_pinned = ?,
         updated_at = ?,
@@ -167,6 +172,7 @@ export function updateNote(id: string, patch: UpdateNotePatch): NoteDetail {
     nextNotebookId,
     nextTitle,
     nextContent,
+    nextContentFormat,
     nextFavorite ? 1 : 0,
     nextPinned ? 1 : 0,
     now,
@@ -210,7 +216,7 @@ function mapSummaryRow(row: NoteSummaryRow): NoteSummary {
   return {
     id: row.id,
     title: row.title || DEFAULT_NOTE_TITLE,
-    contentPreview: row.content_preview ?? '',
+    contentPreview: extractContentPreview(row.content, row.content_format),
     notebookId: row.notebook_id,
     contentFormat: normalizeContentFormat(row.content_format),
     isFavorite: row.is_favorite === 1,
@@ -250,7 +256,39 @@ function normalizeTitle(title: string | undefined): string {
 }
 
 function normalizeContentFormat(format: string | undefined): NoteContentFormat {
-  return format === 'markdown' ? 'markdown' : 'plain-text'
+  if (format === 'markdown' || format === 'tiptap-json') {
+    return format
+  }
+
+  return 'plain-text'
+}
+
+function extractContentPreview(content: string, format: string): string {
+  if (normalizeContentFormat(format) !== 'tiptap-json') {
+    return content.slice(0, 120)
+  }
+
+  try {
+    const parsed = JSON.parse(content) as unknown
+    return collectTiptapText(parsed).trim().slice(0, 120)
+  } catch {
+    return ''
+  }
+}
+
+function collectTiptapText(node: unknown): string {
+  if (!node || typeof node !== 'object') {
+    return ''
+  }
+
+  const record = node as { text?: unknown; content?: unknown }
+  const ownText = typeof record.text === 'string' ? record.text : ''
+
+  if (!Array.isArray(record.content)) {
+    return ownText
+  }
+
+  return [ownText, ...record.content.map(collectTiptapText)].filter(Boolean).join(' ')
 }
 
 function hasOwn<T extends object>(value: T, key: PropertyKey): boolean {

@@ -22,6 +22,7 @@ const {
   draftContent,
   isSaving,
   saveStatus,
+  upgradeDraftContentFormat,
   selectNode,
   toggleNotebook,
   createNotebook,
@@ -81,6 +82,7 @@ onBeforeUnmount(() => {
       :is-saving="isSaving"
       :save-status="saveStatus"
       :error-message="errorMessage"
+      @upgrade-content-format="upgradeDraftContentFormat"
       @delete="deleteCurrentNote"
     />
     <FolderContentView

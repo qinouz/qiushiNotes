@@ -81,7 +81,8 @@ export function useNotes() {
 
     try {
       const created = await window.qiushi.notes.create({
-        notebookId: activeNotebookId ?? defaultNotebookId
+        notebookId: activeNotebookId ?? defaultNotebookId,
+        contentFormat: 'tiptap-json'
       })
       await loadNotes(created.id)
     } catch (error) {

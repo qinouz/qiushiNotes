@@ -132,7 +132,7 @@ sync_status
 第一版约定：
 
 - `id` 使用 UUID。
-- `content_format` 固定为 `plain-text`。
+- 历史首版 `content_format` 固定为 `plain-text`；富文本编辑器接入后，普通笔记升级为 `tiptap-json`，`plain-text` 仅作为旧数据兼容格式。
 - 新笔记标题默认为 `未命名笔记`。
 - 新笔记 `sync_status` 为 `local`。
 - 更新笔记时 `version = version + 1`。

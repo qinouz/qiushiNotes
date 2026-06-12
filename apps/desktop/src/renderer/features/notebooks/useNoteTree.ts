@@ -40,6 +40,7 @@ export function useNoteTree() {
   const defaultNotebookId = ref<string | null>(null)
   const draftTitle = ref('')
   const draftContent = ref('')
+  const draftContentFormat = ref<NoteContentFormat>('tiptap-json')
   const isSaving = ref(false)
   const isApplyingNote = ref(false)
   const saveStatus = ref('未选择笔记')
@@ -342,7 +343,11 @@ export function useNoteTree() {
       return
     }
 
-    if (draftTitle.value === current.title && draftContent.value === current.content) {
+    if (
+      draftTitle.value === current.title &&
+      draftContent.value === current.content &&
+      draftContentFormat.value === current.contentFormat
+    ) {
       saveStatus.value = '已保存'
       return
     }
@@ -354,7 +359,8 @@ export function useNoteTree() {
     try {
       const updated = await window.qiushi.notes.update(current.id, {
         title: draftTitle.value,
-        content: draftContent.value
+        content: draftContent.value,
+        contentFormat: draftContentFormat.value
       })
 
       if (requestId === saveRequestId) {
@@ -380,6 +386,7 @@ export function useNoteTree() {
     selectedNote.value = note
     draftTitle.value = note?.title ?? ''
     draftContent.value = note?.content ?? ''
+    draftContentFormat.value = note?.contentFormat ?? 'tiptap-json'
     saveStatus.value = note ? '已保存' : '未选择笔记'
 
     await nextTick()
@@ -397,6 +404,18 @@ export function useNoteTree() {
     }
 
     notes.value = [...notes.value]
+  }
+
+  function upgradeDraftContentFormat(format: NoteContentFormat): void {
+    if (!selectedNote.value || selectedNote.value.contentFormat === format) {
+      return
+    }
+
+    selectedNote.value = {
+      ...selectedNote.value,
+      contentFormat: format
+    }
+    draftContentFormat.value = format
   }
 
   function expandNotebook(notebookId: string): void {
@@ -425,6 +444,7 @@ export function useNoteTree() {
     defaultNotebookId,
     draftTitle,
     draftContent,
+    draftContentFormat,
     isSaving,
     saveStatus,
     loadTree,
@@ -433,6 +453,7 @@ export function useNoteTree() {
     createNotebook,
     renameNotebook,
     renameNote,
+    upgradeDraftContentFormat,
     createNote,
     createNoteInNotebook,
     deleteNote,
@@ -577,7 +598,7 @@ function toSummary(note: NoteDetail): NoteSummary {
   return {
     id: note.id,
     title: note.title,
-    contentPreview: note.content.slice(0, 120),
+    contentPreview: extractContentPreview(note.content, note.contentFormat),
     notebookId: note.notebookId,
     contentFormat: note.contentFormat,
     isFavorite: note.isFavorite,
@@ -640,5 +661,32 @@ function buildNotebookPath(notebooks: NotebookSummary[], notebookId: string): No
 }
 
 function toContentFormat(kind: CreateNoteKind): NoteContentFormat {
-  return kind === 'markdown' ? 'markdown' : 'plain-text'
+  return kind === 'markdown' ? 'markdown' : 'tiptap-json'
+}
+
+function extractContentPreview(content: string, format: NoteContentFormat): string {
+  if (format !== 'tiptap-json') {
+    return content.slice(0, 120)
+  }
+
+  try {
+    return collectTiptapText(JSON.parse(content) as unknown).trim().slice(0, 120)
+  } catch {
+    return ''
+  }
+}
+
+function collectTiptapText(node: unknown): string {
+  if (!node || typeof node !== 'object') {
+    return ''
+  }
+
+  const record = node as { text?: unknown; content?: unknown }
+  const ownText = typeof record.text === 'string' ? record.text : ''
+
+  if (!Array.isArray(record.content)) {
+    return ownText
+  }
+
+  return [ownText, ...record.content.map(collectTiptapText)].filter(Boolean).join(' ')
 }

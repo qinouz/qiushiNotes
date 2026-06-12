@@ -1,7 +1,7 @@
 import { pinyin } from 'pinyin-pro'
 
 export type SyncStatus = 'local' | 'pending' | 'synced' | 'conflicted'
-export type NoteContentFormat = 'plain-text' | 'markdown'
+export type NoteContentFormat = 'plain-text' | 'markdown' | 'tiptap-json'
 
 export interface CreateNoteInput {
   notebookId?: string | null
@@ -27,6 +27,7 @@ export interface UpdateNotePatch {
   notebookId?: string | null
   title?: string
   content?: string
+  contentFormat?: NoteContentFormat
   isFavorite?: boolean
   isPinned?: boolean
 }

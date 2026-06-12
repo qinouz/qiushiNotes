@@ -254,7 +254,7 @@ NotebookSidebar
 - 点击文件夹后，右侧展示该文件夹下的直接子文件夹和直接笔记。
 - 右侧目录内容页展示面包屑路径、文件夹名称、内容数量、空状态和快捷新建入口。
 - 目录内容以卡片形式展示标题、类型、摘要和更新时间。
-- 新建普通笔记时保存为 `plain-text`。
+- 新建普通笔记时保存为 `tiptap-json`。
 - 新建 Markdown 笔记时保存为 `markdown`，第一版仍使用纯文本编辑区域，不做预览。
 - 文件树和目录内容页继续按标题/拼音稳定排序，不按更新时间倒序，避免自动保存导致列表或卡片位置跳动。
 
@@ -285,7 +285,8 @@ UI 行为：
 数据模型：
 
 - 不新增迁移，继续使用 `notes.content_format`。
-- `content_format = 'plain-text'` 表示普通笔记。
+- `content_format = 'tiptap-json'` 表示普通富文本笔记。
+- `content_format = 'plain-text'` 仅表示旧纯文本笔记兼容输入，后续编辑保存时会升级为 `tiptap-json`。
 - `content_format = 'markdown'` 表示 Markdown 笔记。
 
 IPC / API 边界：

@@ -1,6 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { NoteDetail } from '@qiushi-notes/shared'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import type { NoteContentFormat, NoteDetail } from '@qiushi-notes/shared'
+import { EditorContent, useEditor, type JSONContent } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import { TaskItem, TaskList } from '@tiptap/extension-list'
+import Link from '@tiptap/extension-link'
+import UnderlineExtension from '@tiptap/extension-underline'
+import {
+  Bold,
+  Code2,
+  Heading1,
+  Heading2,
+  Italic,
+  Link2,
+  List,
+  ListChecks,
+  ListOrdered,
+  Minus,
+  Quote,
+  Redo2,
+  Strikethrough,
+  Underline,
+  Undo2
+} from '@lucide/vue'
 
 const props = defineProps<{
   selectedNote: NoteDetail | null
@@ -14,37 +36,262 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:title': [value: string]
   'update:content': [value: string]
+  'upgrade-content-format': [format: NoteContentFormat]
   delete: []
 }>()
 
+const isApplyingEditorContent = ref(false)
+
 // 父组件使用的是 v-model:title / v-model:content。
-// 在子组件里，Vue 的约定是：读取 props.title，修改时 emit('update:title', value)。
-// computed 的 get/set 可以把这套约定包装成普通 v-model，模板会更好读。
+// computed 的 get/set 把这套约定包成模板可直接使用的 model。
 const titleModel = computed({
   get: () => props.title,
   set: (value: string) => emit('update:title', value)
 })
 
-const contentModel = computed({
-  get: () => props.content,
-  set: (value: string) => emit('update:content', value)
+const isMarkdown = computed(() => props.selectedNote?.contentFormat === 'markdown')
+const isRichText = computed(() => Boolean(props.selectedNote) && !isMarkdown.value)
+
+const richTextEditor = useEditor({
+  extensions: [
+    StarterKit.configure({
+      heading: {
+        levels: [1, 2, 3]
+      }
+    }),
+    UnderlineExtension,
+    Link.configure({
+      autolink: true,
+      linkOnPaste: true,
+      openOnClick: false
+    }),
+    TaskList,
+    TaskItem.configure({
+      nested: true
+    })
+  ],
+  content: emptyTiptapDocument(),
+  editorProps: {
+    attributes: {
+      class: 'rich-editor-content',
+      'aria-label': '正文'
+    }
+  },
+  onUpdate({ editor }) {
+    if (isApplyingEditorContent.value || !isRichText.value) {
+      return
+    }
+
+    emit('update:content', JSON.stringify(editor.getJSON()))
+    emit('upgrade-content-format', 'tiptap-json')
+  }
 })
+
+const toolbarItems = [
+  {
+    id: 'bold',
+    icon: Bold,
+    title: '加粗',
+    isActive: () => richTextEditor.value?.isActive('bold') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleBold().run()
+  },
+  {
+    id: 'italic',
+    icon: Italic,
+    title: '斜体',
+    isActive: () => richTextEditor.value?.isActive('italic') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleItalic().run()
+  },
+  {
+    id: 'underline',
+    icon: Underline,
+    title: '下划线',
+    isActive: () => richTextEditor.value?.isActive('underline') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleUnderline().run()
+  },
+  {
+    id: 'strike',
+    icon: Strikethrough,
+    title: '删除线',
+    isActive: () => richTextEditor.value?.isActive('strike') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleStrike().run()
+  },
+  {
+    id: 'heading1',
+    icon: Heading1,
+    title: '一级标题',
+    isActive: () => richTextEditor.value?.isActive('heading', { level: 1 }) ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleHeading({ level: 1 }).run()
+  },
+  {
+    id: 'heading2',
+    icon: Heading2,
+    title: '二级标题',
+    isActive: () => richTextEditor.value?.isActive('heading', { level: 2 }) ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleHeading({ level: 2 }).run()
+  },
+  {
+    id: 'bulletList',
+    icon: List,
+    title: '无序列表',
+    isActive: () => richTextEditor.value?.isActive('bulletList') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleBulletList().run()
+  },
+  {
+    id: 'orderedList',
+    icon: ListOrdered,
+    title: '有序列表',
+    isActive: () => richTextEditor.value?.isActive('orderedList') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleOrderedList().run()
+  },
+  {
+    id: 'taskList',
+    icon: ListChecks,
+    title: '待办列表',
+    isActive: () => richTextEditor.value?.isActive('taskList') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleTaskList().run()
+  },
+  {
+    id: 'blockquote',
+    icon: Quote,
+    title: '引用',
+    isActive: () => richTextEditor.value?.isActive('blockquote') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleBlockquote().run()
+  },
+  {
+    id: 'codeBlock',
+    icon: Code2,
+    title: '代码块',
+    isActive: () => richTextEditor.value?.isActive('codeBlock') ?? false,
+    run: () => richTextEditor.value?.chain().focus().toggleCodeBlock().run()
+  },
+  {
+    id: 'link',
+    icon: Link2,
+    title: '链接',
+    isActive: () => richTextEditor.value?.isActive('link') ?? false,
+    run: () => toggleLink()
+  },
+  {
+    id: 'horizontalRule',
+    icon: Minus,
+    title: '分割线',
+    isActive: () => false,
+    run: () => richTextEditor.value?.chain().focus().setHorizontalRule().run()
+  },
+  {
+    id: 'undo',
+    icon: Undo2,
+    title: '撤销',
+    isActive: () => false,
+    run: () => richTextEditor.value?.chain().focus().undo().run()
+  },
+  {
+    id: 'redo',
+    icon: Redo2,
+    title: '重做',
+    isActive: () => false,
+    run: () => richTextEditor.value?.chain().focus().redo().run()
+  }
+]
+
+watch(
+  () => [props.selectedNote?.id, props.selectedNote?.contentFormat] as const,
+  async () => {
+    if (!richTextEditor.value || !isRichText.value) {
+      return
+    }
+
+    isApplyingEditorContent.value = true
+    richTextEditor.value.commands.setContent(toTiptapDocument(props.content, props.selectedNote?.contentFormat), {
+      emitUpdate: false
+    })
+
+    await nextTick()
+    isApplyingEditorContent.value = false
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  richTextEditor.value?.destroy()
+})
+
+function handleMarkdownInput(event: Event): void {
+  emit('update:content', (event.target as HTMLTextAreaElement).value)
+}
+
+function toggleLink(): void {
+  const editor = richTextEditor.value
+
+  if (!editor) {
+    return
+  }
+
+  const previousUrl = editor.getAttributes('link').href as string | undefined
+  const nextUrl = window.prompt('链接地址', previousUrl ?? '')
+
+  if (nextUrl === null) {
+    return
+  }
+
+  if (nextUrl.trim() === '') {
+    editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    return
+  }
+
+  editor.chain().focus().extendMarkRange('link').setLink({ href: nextUrl.trim() }).run()
+}
+
+function emptyTiptapDocument(): JSONContent {
+  return {
+    type: 'doc',
+    content: [{ type: 'paragraph' }]
+  }
+}
+
+function toTiptapDocument(content: string, format: NoteContentFormat | undefined): JSONContent {
+  if (format === 'tiptap-json') {
+    try {
+      return JSON.parse(content) as JSONContent
+    } catch {
+      return plainTextToTiptapDocument(content)
+    }
+  }
+
+  return plainTextToTiptapDocument(content)
+}
+
+function plainTextToTiptapDocument(content: string): JSONContent {
+  const lines = content.length > 0 ? content.split(/\r?\n/) : ['']
+
+  return {
+    type: 'doc',
+    content: lines.map((line) => ({
+      type: 'paragraph',
+      content: line ? [{ type: 'text', text: line }] : undefined
+    }))
+  }
+}
 </script>
 
 <template>
   <section class="editor-pane" aria-label="编辑器">
     <header class="editor-toolbar split">
       <input
+        v-model="titleModel"
         class="title-input"
         aria-label="标题"
-        v-model="titleModel"
         :disabled="!selectedNote"
         placeholder="未命名笔记"
       />
 
       <div class="editor-actions">
-        <span v-if="selectedNote?.contentFormat === 'markdown'" class="note-format-badge">
+        <span v-if="isMarkdown" class="note-format-badge">
           Markdown
+        </span>
+        <span v-else-if="selectedNote" class="note-format-badge">
+          富文本
         </span>
         <span class="save-status" :class="{ saving: isSaving }">{{ saveStatus }}</span>
         <button
@@ -58,13 +305,36 @@ const contentModel = computed({
       </div>
     </header>
 
+    <div v-if="selectedNote && isRichText" class="rich-editor-toolbar" aria-label="富文本工具栏">
+      <button
+        v-for="item in toolbarItems"
+        :key="item.id"
+        class="icon-button"
+        :class="{ active: item.isActive() }"
+        type="button"
+        :title="item.title"
+        :aria-label="item.title"
+        @click="item.run()"
+      >
+        <component :is="item.icon" :size="16" :stroke-width="2" />
+      </button>
+    </div>
+
     <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+
+    <EditorContent
+      v-if="selectedNote && isRichText"
+      class="rich-editor-surface"
+      :editor="richTextEditor"
+    />
+
     <textarea
-      v-if="selectedNote"
+      v-else-if="selectedNote"
       class="editor-surface"
       aria-label="正文"
       placeholder="开始记录..."
-      v-model="contentModel"
+      :value="content"
+      @input="handleMarkdownInput"
     />
     <div v-else class="editor-empty">选择或新建一条笔记</div>
   </section>
