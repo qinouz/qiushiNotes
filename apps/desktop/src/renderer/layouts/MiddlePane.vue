@@ -19,6 +19,8 @@ const emit = defineEmits<{
   selectNote: [id: string]
   createNotebook: [parentId?: string | null]
   renameNotebook: [id: string, name: string]
+  renameNote: [id: string, title: string]
+  deleteNote: [id: string]
   createNote: [type: 'note' | 'markdown']
   createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown']
   'update:searchQuery': [value: string]
@@ -79,6 +81,8 @@ function handleSearchInput(event: Event): void {
         @select-note="emit('selectNote', $event)"
         @create-notebook="emit('createNotebook', $event)"
         @rename-notebook="(id, name) => emit('renameNotebook', id, name)"
+        @rename-note="(id, title) => emit('renameNote', id, title)"
+        @delete-note="emit('deleteNote', $event)"
         @create-note-in-notebook="(notebookId, type) => emit('createNoteInNotebook', notebookId, type)"
       />
     </div>

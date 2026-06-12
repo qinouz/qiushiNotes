@@ -230,6 +230,18 @@ export function useNoteTree() {
     }
   }
 
+  async function renameNote(id: string, title: string): Promise<void> {
+    await flushPendingSave()
+    errorMessage.value = ''
+
+    try {
+      const updated = await window.qiushi.notes.update(id, { title })
+      await loadTree(updated.id)
+    } catch (error) {
+      errorMessage.value = getErrorMessage(error, '重命名笔记失败')
+    }
+  }
+
   async function createNote(kind: CreateNoteKind = 'note'): Promise<void> {
     await flushPendingSave()
     errorMessage.value = ''
@@ -274,17 +286,32 @@ export function useNoteTree() {
       return
     }
 
-    clearSaveTimer()
+    await deleteNote(current.id)
+  }
+
+  async function deleteNote(noteId: string): Promise<void> {
+    const deletedCurrentNote = selectedNote.value?.id === noteId
+
+    if (deletedCurrentNote) {
+      clearSaveTimer()
+    } else {
+      await flushPendingSave()
+    }
+
     errorMessage.value = ''
 
     try {
-      await window.qiushi.notes.softDelete(current.id)
+      await window.qiushi.notes.softDelete(noteId)
 
-      const nextNoteId =
-        notes.value.find((note) => note.id !== current.id && note.notebookId === current.notebookId)?.id ??
-        notes.value.find((note) => note.id !== current.id)?.id
+      const currentNotebookId = notes.value.find((note) => note.id === noteId)?.notebookId ?? selectedNotebookId.value
+      const nextNodeId = deletedCurrentNote
+        ? notes.value.find((note) => note.id !== noteId && note.notebookId === currentNotebookId)?.id ??
+          notes.value.find((note) => note.id !== noteId)?.id ??
+          currentNotebookId ??
+          defaultNotebookId.value
+        : selectedNote.value?.id ?? selectedNotebookId.value ?? defaultNotebookId.value
 
-      await loadTree(nextNoteId)
+      await loadTree(nextNodeId ?? undefined)
     } catch (error) {
       errorMessage.value = getErrorMessage(error, '删除失败')
     }
@@ -405,8 +432,10 @@ export function useNoteTree() {
     toggleNotebook,
     createNotebook,
     renameNotebook,
+    renameNote,
     createNote,
     createNoteInNotebook,
+    deleteNote,
     deleteCurrentNote
   }
 }

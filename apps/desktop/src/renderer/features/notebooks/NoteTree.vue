@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import type { NoteTreeNode } from '@qiushi-notes/shared'
-import { ChevronRight, FileText, Folder, FolderOpen, FolderPlus, NotebookPen, Pencil } from '@lucide/vue'
+import {
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  NotebookPen,
+  Pencil,
+  Trash2
+} from '@lucide/vue'
+import { ref } from 'vue'
+import ContextMenu from '../../components/ContextMenu.vue'
+import type { ContextMenuItem } from '../../components/ContextMenu.vue'
 import DropdownMenu from '../../components/DropdownMenu.vue'
 import type { MenuItem } from '../../components/DropdownMenu.vue'
 
@@ -18,6 +31,8 @@ const emit = defineEmits<{
   createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown']
   createNotebook: [parentId?: string | null]
   renameNotebook: [id: string, name: string]
+  renameNote: [id: string, title: string]
+  deleteNote: [id: string]
 }>()
 
 const newMenuItems: MenuItem[] = [
@@ -27,6 +42,25 @@ const newMenuItems: MenuItem[] = [
   { id: 'rename', icon: Pencil, label: '重命名' }
 ]
 
+const notebookContextMenuItems: ContextMenuItem[] = [
+  { id: 'note', icon: FileText, label: '新建普通笔记' },
+  { id: 'markdown', icon: NotebookPen, label: '新建 Markdown' },
+  { id: 'folder', icon: FolderPlus, label: '新建文件夹' },
+  { id: 'rename', icon: Pencil, label: '重命名' }
+]
+
+const noteContextMenuItems: ContextMenuItem[] = [
+  { id: 'open', icon: ExternalLink, label: '打开' },
+  { id: 'rename', icon: Pencil, label: '重命名' },
+  { id: 'delete', icon: Trash2, label: '删除', danger: true }
+]
+
+const contextMenu = ref<{
+  node: NoteTreeNode
+  x: number
+  y: number
+} | null>(null)
+
 function handleNodeClick(node: NoteTreeNode): void {
   if (node.type === 'notebook') {
     emit('selectNotebook', node.id)
@@ -35,9 +69,21 @@ function handleNodeClick(node: NoteTreeNode): void {
   }
 }
 
+function handleNodeContextMenu(event: MouseEvent, node: NoteTreeNode): void {
+  contextMenu.value = {
+    node,
+    x: Math.min(event.clientX, window.innerWidth - 220),
+    y: Math.min(event.clientY, window.innerHeight - 180)
+  }
+}
+
+function closeContextMenu(): void {
+  contextMenu.value = null
+}
+
 function handleMenuSelect(notebookId: string, menuId: string): void {
   if (menuId === 'rename') {
-    requestRename(notebookId)
+    requestRenameNotebook(notebookId)
   } else if (menuId === 'folder') {
     emit('createNotebook', notebookId)
   } else {
@@ -45,7 +91,28 @@ function handleMenuSelect(notebookId: string, menuId: string): void {
   }
 }
 
-function requestRename(notebookId: string): void {
+function handleContextMenuSelect(menuId: string): void {
+  const node = contextMenu.value?.node
+
+  if (!node) {
+    return
+  }
+
+  if (node.type === 'notebook') {
+    handleMenuSelect(node.id, menuId)
+    return
+  }
+
+  if (menuId === 'open') {
+    emit('selectNote', node.id)
+  } else if (menuId === 'rename') {
+    requestRenameNote(node)
+  } else if (menuId === 'delete') {
+    requestDeleteNote(node)
+  }
+}
+
+function requestRenameNotebook(notebookId: string): void {
   const node = findNotebookNode(notebookId)
   const nextName = window.prompt('重命名文件夹', node?.name ?? '')
 
@@ -54,6 +121,26 @@ function requestRename(notebookId: string): void {
   }
 
   emit('renameNotebook', notebookId, nextName)
+}
+
+function requestRenameNote(node: NoteTreeNode): void {
+  const nextTitle = window.prompt('重命名笔记', node.name)
+
+  if (nextTitle === null) {
+    return
+  }
+
+  emit('renameNote', node.id, nextTitle)
+}
+
+function requestDeleteNote(node: NoteTreeNode): void {
+  const confirmed = window.confirm(`删除笔记“${node.name}”？\n\n删除后会进入回收站，后续可从回收站恢复。`)
+
+  if (!confirmed) {
+    return
+  }
+
+  emit('deleteNote', node.id)
 }
 
 function findNotebookNode(id: string): NoteTreeNode | undefined {
@@ -76,6 +163,7 @@ function findNotebookNode(id: string): NoteTreeNode | undefined {
           selected: selectedNodeId === node.id
         }"
         :style="{ paddingLeft: `${8 + node.depth * 16}px` }"
+        @contextmenu.stop.prevent="handleNodeContextMenu($event, node)"
       >
         <button
           v-if="node.type === 'notebook'"
@@ -132,5 +220,14 @@ function findNotebookNode(id: string): NoteTreeNode | undefined {
         </template>
       </div>
     </template>
+
+    <ContextMenu
+      v-if="contextMenu"
+      :items="contextMenu.node.type === 'notebook' ? notebookContextMenuItems : noteContextMenuItems"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      @select="handleContextMenuSelect"
+      @close="closeContextMenu"
+    />
   </nav>
 </template>

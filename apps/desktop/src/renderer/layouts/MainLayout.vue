@@ -26,8 +26,10 @@ const {
   toggleNotebook,
   createNotebook,
   renameNotebook,
+  renameNote,
   createNote,
   createNoteInNotebook,
+  deleteNote,
   deleteCurrentNote
 } = useNoteTree()
 
@@ -65,6 +67,8 @@ onBeforeUnmount(() => {
       @select-note="selectNode"
       @create-notebook="createNotebook"
       @rename-notebook="(id, name) => renameNotebook(id, name)"
+      @rename-note="(id, title) => renameNote(id, title)"
+      @delete-note="deleteNote"
       @create-note="createNote"
       @create-note-in-notebook="(notebookId, type) => createNoteInNotebook(notebookId, type)"
     />
