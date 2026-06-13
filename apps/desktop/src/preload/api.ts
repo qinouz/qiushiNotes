@@ -1,4 +1,5 @@
 import type {
+  AttachmentDetail,
   BackupResult,
   CreateNotebookInput,
   CreateNoteInput,
@@ -7,6 +8,7 @@ import type {
   NotebookSummary,
   NoteSummary,
   RestoreBackupResult,
+  SaveImageAttachmentInput,
   UpdateNotebookPatch,
   UpdateNotePatch
 } from '@qiushi-notes/shared'
@@ -18,6 +20,9 @@ export interface QiushiApi {
   backups: {
     create: () => Promise<BackupResult>
     restoreFromFile: () => Promise<RestoreBackupResult>
+  }
+  attachments: {
+    saveImageFromPaste: (input: SaveImageAttachmentInput) => Promise<AttachmentDetail>
   }
   notes: {
     list: (input?: ListNotesInput) => Promise<NoteSummary[]>

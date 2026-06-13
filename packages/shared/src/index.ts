@@ -73,6 +73,27 @@ export interface RestoreBackupResult {
   cancelled: boolean
 }
 
+export interface SaveImageAttachmentInput {
+  noteId: string
+  fileName: string
+  mimeType: string
+  data: ArrayBuffer
+}
+
+export interface AttachmentDetail {
+  id: string
+  noteId: string | null
+  fileName: string
+  mimeType: string | null
+  size: number
+  sha256: string | null
+  relativePath: string
+  createdAt: string
+  deletedAt: string | null
+  syncStatus: SyncStatus
+  url: string
+}
+
 export type NoteTreeNodeType = 'notebook' | 'note'
 
 export interface NoteTreeNode {

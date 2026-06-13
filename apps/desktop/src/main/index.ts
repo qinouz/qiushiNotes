@@ -1,9 +1,14 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { closeDatabase, initializeDatabase } from './db/database'
+import { registerAttachmentsIpcHandlers } from './ipc/attachments-ipc'
 import { registerBackupsIpcHandlers } from './ipc/backups-ipc'
 import { registerNotebooksIpcHandlers } from './ipc/notebooks-ipc'
 import { registerNotesIpcHandlers } from './ipc/notes-ipc'
+import {
+  registerAttachmentProtocolHandler,
+  registerAttachmentProtocolScheme
+} from './protocols/attachment-protocol'
 import { ensureDefaultNotebook } from './services/notebook-service'
 import { createMainWindow } from './window'
 
@@ -12,6 +17,7 @@ import { createMainWindow } from './window'
 // 窗口标题和 UI 仍然使用中文“秋实笔记”。
 app.setName('QiushiNotes')
 app.setPath('userData', path.join(app.getPath('appData'), 'QiushiNotes'))
+registerAttachmentProtocolScheme()
 
 app.whenReady().then(() => {
   // 数据库必须先于窗口初始化。
@@ -21,6 +27,8 @@ app.whenReady().then(() => {
   console.info(`Local database initialized at ${paths.databasePath}`)
 
   ensureDefaultNotebook()
+  registerAttachmentProtocolHandler()
+  registerAttachmentsIpcHandlers()
   registerBackupsIpcHandlers()
   registerNotebooksIpcHandlers()
   registerNotesIpcHandlers()

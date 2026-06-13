@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { NoteContentFormat, NoteDetail } from '@qiushi-notes/shared'
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
+import Image from '@tiptap/extension-image'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Link from '@tiptap/extension-link'
 import UnderlineExtension from '@tiptap/extension-underline'
@@ -52,6 +53,20 @@ const titleModel = computed({
 const isMarkdown = computed(() => props.selectedNote?.contentFormat === 'markdown')
 const isRichText = computed(() => Boolean(props.selectedNote) && !isMarkdown.value)
 
+const AttachmentImage = Image.extend({
+  addAttributes() {
+    return {
+      ...(this.parent?.() ?? {}),
+      attachmentId: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-attachment-id'),
+        renderHTML: (attributes: { attachmentId?: string | null }) =>
+          attributes.attachmentId ? { 'data-attachment-id': attributes.attachmentId } : {}
+      }
+    }
+  }
+})
+
 const richTextEditor = useEditor({
   extensions: [
     StarterKit.configure({
@@ -65,6 +80,12 @@ const richTextEditor = useEditor({
       linkOnPaste: true,
       openOnClick: false
     }),
+    AttachmentImage.configure({
+      allowBase64: false,
+      HTMLAttributes: {
+        class: 'rich-editor-image'
+      }
+    }),
     TaskList,
     TaskItem.configure({
       nested: true
@@ -75,6 +96,21 @@ const richTextEditor = useEditor({
     attributes: {
       class: 'rich-editor-content',
       'aria-label': '正文'
+    },
+    handlePaste(_view, event) {
+      if (!isRichText.value) {
+        return false
+      }
+
+      const imageFiles = getImageFilesFromClipboard(event)
+
+      if (imageFiles.length === 0) {
+        return false
+      }
+
+      event.preventDefault()
+      void insertPastedImages(imageFiles)
+      return true
     }
   },
   onUpdate({ editor }) {
@@ -219,6 +255,65 @@ onBeforeUnmount(() => {
 
 function handleMarkdownInput(event: Event): void {
   emit('update:content', (event.target as HTMLTextAreaElement).value)
+}
+
+async function insertPastedImages(files: File[]): Promise<void> {
+  const noteId = props.selectedNote?.id
+  const editor = richTextEditor.value
+
+  if (!noteId || !editor) {
+    return
+  }
+
+  try {
+    for (const file of files) {
+      const attachment = await window.qiushi.attachments.saveImageFromPaste({
+        noteId,
+        fileName: file.name || '粘贴图片',
+        mimeType: file.type,
+        data: await file.arrayBuffer()
+      })
+
+      if (props.selectedNote?.id !== noteId) {
+        return
+      }
+
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'image',
+          attrs: {
+            src: attachment.url,
+            alt: attachment.fileName,
+            title: attachment.fileName,
+            attachmentId: attachment.id
+          }
+        })
+        .run()
+    }
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '粘贴图片失败')
+  }
+}
+
+function getImageFilesFromClipboard(event: ClipboardEvent): File[] {
+  const dataTransfer = event.clipboardData
+
+  if (!dataTransfer) {
+    return []
+  }
+
+  const files = Array.from(dataTransfer.files).filter((file) => file.type.startsWith('image/'))
+
+  if (files.length > 0) {
+    return files
+  }
+
+  return Array.from(dataTransfer.items)
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file))
 }
 
 function toggleLink(): void {
