@@ -61,6 +61,18 @@ export interface NotebookSummary {
   syncStatus: SyncStatus
 }
 
+export interface BackupResult {
+  filePath: string
+  fileName: string
+  sizeBytes: number
+  createdAt: string
+}
+
+export interface RestoreBackupResult {
+  restored: boolean
+  cancelled: boolean
+}
+
 export type NoteTreeNodeType = 'notebook' | 'note'
 
 export interface NoteTreeNode {

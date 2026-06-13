@@ -1,10 +1,12 @@
 import type {
+  BackupResult,
   CreateNotebookInput,
   CreateNoteInput,
   ListNotesInput,
   NoteDetail,
   NotebookSummary,
   NoteSummary,
+  RestoreBackupResult,
   UpdateNotebookPatch,
   UpdateNotePatch
 } from '@qiushi-notes/shared'
@@ -12,6 +14,10 @@ import type {
 export interface QiushiApi {
   app: {
     getName: () => string
+  }
+  backups: {
+    create: () => Promise<BackupResult>
+    restoreFromFile: () => Promise<RestoreBackupResult>
   }
   notes: {
     list: (input?: ListNotesInput) => Promise<NoteSummary[]>

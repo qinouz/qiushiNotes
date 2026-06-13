@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import NoteEditor from '../features/notes/NoteEditor.vue'
 import FolderContentView from '../features/notebooks/FolderContentView.vue'
+import SettingsView from '../features/settings/SettingsView.vue'
 import { useNoteTree } from '../features/notebooks/useNoteTree'
 import FunctionBar from './FunctionBar.vue'
 import MiddlePane from './MiddlePane.vue'
@@ -57,7 +58,10 @@ onBeforeUnmount(() => {
       @navigate="activeView = $event"
     />
 
-    <MiddlePane
+    <SettingsView v-if="activeView === 'settings'" />
+
+    <template v-else>
+      <MiddlePane
       :nodes="treeNodes"
       :selected-node-id="selectedNodeId"
       v-model:search-query="searchQuery"
@@ -72,28 +76,29 @@ onBeforeUnmount(() => {
       @delete-note="deleteNote"
       @create-note="createNote"
       @create-note-in-notebook="(notebookId, type) => createNoteInNotebook(notebookId, type)"
-    />
+      />
 
-    <NoteEditor
-      v-if="selectedNote"
-      v-model:title="draftTitle"
-      v-model:content="draftContent"
-      :selected-note="selectedNote"
-      :is-saving="isSaving"
-      :save-status="saveStatus"
-      :error-message="errorMessage"
-      @upgrade-content-format="upgradeDraftContentFormat"
-      @delete="deleteCurrentNote"
-    />
-    <FolderContentView
-      v-else
-      :notebook="selectedNotebook"
-      :path="selectedNotebookPath"
-      :items="folderContentItems"
-      @open-notebook="selectNode"
-      @open-note="selectNode"
-      @create-note="createNote"
-      @create-notebook="createNotebook"
-    />
+      <NoteEditor
+        v-if="selectedNote"
+        v-model:title="draftTitle"
+        v-model:content="draftContent"
+        :selected-note="selectedNote"
+        :is-saving="isSaving"
+        :save-status="saveStatus"
+        :error-message="errorMessage"
+        @upgrade-content-format="upgradeDraftContentFormat"
+        @delete="deleteCurrentNote"
+      />
+      <FolderContentView
+        v-else
+        :notebook="selectedNotebook"
+        :path="selectedNotebookPath"
+        :items="folderContentItems"
+        @open-notebook="selectNode"
+        @open-note="selectNode"
+        @create-note="createNote"
+        @create-notebook="createNotebook"
+      />
+    </template>
   </main>
 </template>

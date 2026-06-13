@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { closeDatabase, initializeDatabase } from './db/database'
+import { registerBackupsIpcHandlers } from './ipc/backups-ipc'
 import { registerNotebooksIpcHandlers } from './ipc/notebooks-ipc'
 import { registerNotesIpcHandlers } from './ipc/notes-ipc'
 import { ensureDefaultNotebook } from './services/notebook-service'
@@ -20,6 +21,7 @@ app.whenReady().then(() => {
   console.info(`Local database initialized at ${paths.databasePath}`)
 
   ensureDefaultNotebook()
+  registerBackupsIpcHandlers()
   registerNotebooksIpcHandlers()
   registerNotesIpcHandlers()
 

@@ -5,6 +5,10 @@ const api: QiushiApi = {
   app: {
     getName: () => '秋实笔记'
   },
+  backups: {
+    create: () => ipcRenderer.invoke('backups:create'),
+    restoreFromFile: () => ipcRenderer.invoke('backups:restore-from-file')
+  },
   notes: {
     // preload 只暴露业务语义，不暴露原始 ipcRenderer。
     // 这样 Vue 页面无法随意调用本地能力，Electron 安全边界更清晰。
