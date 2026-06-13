@@ -3,9 +3,11 @@ import { onMounted, onBeforeUnmount, ref } from 'vue'
 import NoteEditor from '../features/notes/NoteEditor.vue'
 import FolderContentView from '../features/notebooks/FolderContentView.vue'
 import SettingsView from '../features/settings/SettingsView.vue'
+import TrashView from '../features/trash/TrashView.vue'
 import { useNoteTree } from '../features/notebooks/useNoteTree'
 import FunctionBar from './FunctionBar.vue'
 import MiddlePane from './MiddlePane.vue'
+import type { NoteDetail } from '@qiushi-notes/shared'
 
 const activeView = ref('notes')
 
@@ -17,12 +19,16 @@ const {
   selectedNotebookPath,
   folderContentItems,
   searchQuery,
+  searchResults,
   isLoading,
+  isSearchLoading,
   errorMessage,
+  searchErrorMessage,
   draftTitle,
   draftContent,
   isSaving,
   saveStatus,
+  loadTree,
   upgradeDraftContentFormat,
   selectNode,
   toggleNotebook,
@@ -42,6 +48,10 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 }
 
+function handleNoteRestored(note: NoteDetail): void {
+  void loadTree(note.id)
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
 })
@@ -59,14 +69,18 @@ onBeforeUnmount(() => {
     />
 
     <SettingsView v-if="activeView === 'settings'" />
+    <TrashView v-else-if="activeView === 'trash'" @restored="handleNoteRestored" />
 
     <template v-else>
       <MiddlePane
       :nodes="treeNodes"
       :selected-node-id="selectedNodeId"
       v-model:search-query="searchQuery"
+      :search-results="searchResults"
       :is-loading="isLoading"
+      :is-search-loading="isSearchLoading"
       :error-message="errorMessage"
+      :search-error-message="searchErrorMessage"
       @select-notebook="selectNode"
       @toggle-notebook="toggleNotebook"
       @select-note="selectNode"

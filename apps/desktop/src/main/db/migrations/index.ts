@@ -147,5 +147,20 @@ export const databaseMigrations: DatabaseMigration[] = [
         updated_at TEXT NOT NULL
       );
     `
+  },
+  {
+    id: '002',
+    name: 'note-search-index',
+    sql: `
+      CREATE TABLE IF NOT EXISTS note_search_index (
+        note_id TEXT PRIMARY KEY REFERENCES notes(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        content_text TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_note_search_index_updated_at
+        ON note_search_index(updated_at);
+    `
   }
 ]

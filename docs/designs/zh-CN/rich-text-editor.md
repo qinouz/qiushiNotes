@@ -34,6 +34,7 @@
 - 富文本内容保存为 TipTap JSON 字符串，继续写入本地 SQLite 的 `notes.content`。
 - 自动保存沿用现有 800ms 防抖流程。
 - 工具栏支持加粗、斜体、下划线、标题、无序列表、有序列表、待办列表、引用、代码块、分割线、撤销和重做。
+- 工具栏支持对选中文本或后续输入设置字号和行距。
 - 笔记列表和文件夹卡片摘要显示富文本纯文本预览，而不是 JSON 原文。
 
 ## 非目标
@@ -62,6 +63,7 @@
 - 普通笔记标题下方显示富文本工具栏。
 - Markdown 笔记标题栏显示 Markdown 标识，并使用纯文本编辑区。
 - 工具栏按钮使用图标和简短文本组合，按钮激活时显示选中状态。
+- 字号和行距使用紧凑下拉框，放在富文本工具栏左侧；选择“默认”时移除当前文本样式，回到编辑器基础样式。
 - 如果未选中笔记，显示空状态，不初始化 TipTap。
 - 富文本编辑区占满右侧剩余空间，滚动发生在编辑区内部。
 
@@ -79,6 +81,7 @@ V1 当前支持：
 - `content_format = 'tiptap-json'`：普通富文本笔记，`content` 是 TipTap JSON 字符串。
 - `content_format = 'plain-text'`：旧普通纯文本笔记，只作为兼容输入，保存后升级。
 - `content_format = 'markdown'`：Markdown 笔记，`content` 是 Markdown 源文本。
+- 字号和行距作为 TipTap `textStyle` mark 的属性保存到 `content` JSON 中，不新增 SQLite 字段；这样不同文本片段可以保留不同排版，同时不会影响现有自动保存和未来同步记录边界。
 
 TipTap 空文档约定：
 
@@ -93,6 +96,7 @@ TipTap 空文档约定：
 - main service 对 `contentFormat` 做白名单归一化，拒绝 renderer 任意写入格式字符串。
 - 普通笔记保存时写入 `content_format = 'tiptap-json'`，便于未来导出模块识别。
 - Markdown 笔记保存时不改变 `content_format`。
+- 默认正文行距应保持接近普通笔记应用的阅读密度；当前 CSS 默认行距为 `1.62`，用户选择的行距才写入 TipTap JSON。
 
 ## IPC / API 边界
 
@@ -134,6 +138,7 @@ window.qiushi.notes.update(id, { title, content, contentFormat: 'tiptap-json' })
 - 构建通过。
 - 新建普通笔记后 `contentFormat` 为 `tiptap-json`。
 - 普通笔记可使用加粗、标题、列表等工具栏按钮，并自动保存。
+- 普通笔记可设置字号和行距；切换笔记或重启后 TipTap JSON 中的字号、行距保留。
 - 重启或重新选择笔记后富文本格式保留。
 - Markdown 笔记仍使用纯文本编辑，不被保存为 TipTap JSON。
 - 旧 `plain-text` 笔记能打开并在编辑保存后升级为 `tiptap-json`。

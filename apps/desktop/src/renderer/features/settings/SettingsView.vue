@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { BackupResult } from '@qiushi-notes/shared'
-import { Download, RotateCcw, ShieldCheck } from '@lucide/vue'
+import type { BackupResult, ExportJsonResult } from '@qiushi-notes/shared'
+import { Archive, Download, RotateCcw, ShieldCheck } from '@lucide/vue'
 
 const isBusy = ref(false)
 const statusMessage = ref('')
 const errorMessage = ref('')
 const lastBackup = ref<BackupResult | null>(null)
+const lastExport = ref<ExportJsonResult | null>(null)
 
 const backupSize = computed(() => {
   if (!lastBackup.value) {
@@ -14,6 +15,14 @@ const backupSize = computed(() => {
   }
 
   return formatBytes(lastBackup.value.sizeBytes)
+})
+
+const exportSize = computed(() => {
+  if (!lastExport.value) {
+    return ''
+  }
+
+  return formatBytes(lastExport.value.sizeBytes)
 })
 
 async function createBackup(): Promise<void> {
@@ -60,6 +69,23 @@ async function restoreBackup(): Promise<void> {
   }
 }
 
+async function exportJson(): Promise<void> {
+  isBusy.value = true
+  statusMessage.value = ''
+  errorMessage.value = ''
+
+  try {
+    lastExport.value = await window.qiushi.importExport.exportJson()
+    statusMessage.value = lastExport.value.missingAttachmentCount > 0
+      ? `导出完成，但有 ${lastExport.value.missingAttachmentCount} 个附件文件缺失。`
+      : 'JSON 导出已创建。'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '导出 JSON 失败')
+  } finally {
+    isBusy.value = false
+  }
+}
+
 function formatBytes(value: number): string {
   if (value < 1024) {
     return `${value} B`
@@ -83,6 +109,9 @@ function getErrorMessage(error: unknown, fallback: string): string {
       <h1>设置</h1>
       <p>先把数据备份和恢复做稳，再继续往云同步推进。</p>
     </header>
+
+    <p v-if="statusMessage" class="settings-status">{{ statusMessage }}</p>
+    <p v-if="errorMessage" class="settings-status error">{{ errorMessage }}</p>
 
     <div class="settings-section">
       <div class="settings-section-heading">
@@ -109,9 +138,34 @@ function getErrorMessage(error: unknown, fallback: string): string {
         <strong>{{ lastBackup.fileName }}</strong>
         <small>{{ backupSize }} · {{ lastBackup.filePath }}</small>
       </div>
+    </div>
 
-      <p v-if="statusMessage" class="settings-status">{{ statusMessage }}</p>
-      <p v-if="errorMessage" class="settings-status error">{{ errorMessage }}</p>
+    <div class="settings-section">
+      <div class="settings-section-heading">
+        <Archive :size="20" :stroke-width="1.9" />
+        <div>
+          <h2>数据导出</h2>
+          <p>导出为可读 JSON 目录，包含笔记数据和附件文件，适合迁移或长期留档。</p>
+        </div>
+      </div>
+
+      <div class="settings-actions-row">
+        <button class="settings-action-button" type="button" :disabled="isBusy" @click="exportJson">
+          <Download :size="16" :stroke-width="2" />
+          导出 JSON
+        </button>
+      </div>
+
+      <div v-if="lastExport" class="backup-result">
+        <span>最新导出</span>
+        <strong>{{ lastExport.filePath }}</strong>
+        <small>
+          {{ exportSize }} · 已复制 {{ lastExport.copiedAttachmentCount }} 个附件
+          <template v-if="lastExport.missingAttachmentCount > 0">
+            · 缺失 {{ lastExport.missingAttachmentCount }} 个附件
+          </template>
+        </small>
+      </div>
     </div>
   </section>
 </template>

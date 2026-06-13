@@ -1,7 +1,7 @@
 import { pinyin } from 'pinyin-pro'
 
 export type SyncStatus = 'local' | 'pending' | 'synced' | 'conflicted'
-export type NoteContentFormat = 'plain-text' | 'markdown' | 'tiptap-json'
+export type NoteContentFormat = 'plain-text' | 'markdown' | 'tiptap-json' | 'spreadsheet-json'
 
 export interface CreateNoteInput {
   notebookId?: string | null
@@ -12,6 +12,10 @@ export interface CreateNoteInput {
 
 export interface ListNotesInput {
   notebookId?: string | null
+}
+
+export interface SearchNotesInput {
+  query: string
 }
 
 export interface CreateNotebookInput {
@@ -45,6 +49,16 @@ export interface NoteSummary {
   syncStatus: SyncStatus
 }
 
+export interface TrashedNoteSummary extends NoteSummary {
+  deletedAt: string
+  notebookName: string | null
+}
+
+export interface SearchNoteResult extends NoteSummary {
+  matchPreview: string
+  notebookName: string | null
+}
+
 export interface NoteDetail extends NoteSummary {
   content: string
   createdAt: string
@@ -71,6 +85,16 @@ export interface BackupResult {
 export interface RestoreBackupResult {
   restored: boolean
   cancelled: boolean
+}
+
+export interface ExportJsonResult {
+  exportDir: string
+  filePath: string
+  fileName: string
+  sizeBytes: number
+  exportedAt: string
+  copiedAttachmentCount: number
+  missingAttachmentCount: number
 }
 
 export interface SaveImageAttachmentInput {

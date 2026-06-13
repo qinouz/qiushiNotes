@@ -9,6 +9,7 @@ import {
   FolderPlus,
   NotebookPen,
   Pencil,
+  Table2,
   Trash2
 } from '@lucide/vue'
 import { ref } from 'vue'
@@ -28,7 +29,7 @@ const emit = defineEmits<{
   selectNotebook: [id: string]
   toggleNotebook: [id: string]
   selectNote: [id: string]
-  createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown']
+  createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown' | 'spreadsheet']
   createNotebook: [parentId?: string | null]
   renameNotebook: [id: string, name: string]
   renameNote: [id: string, title: string]
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 const newMenuItems: MenuItem[] = [
   { id: 'note', icon: FileText, label: '普通笔记' },
   { id: 'markdown', icon: NotebookPen, label: 'Markdown 笔记' },
+  { id: 'spreadsheet', icon: Table2, label: '表格笔记' },
   { id: 'folder', icon: FolderPlus, label: '文件夹' },
   { id: 'rename', icon: Pencil, label: '重命名' }
 ]
@@ -45,6 +47,7 @@ const newMenuItems: MenuItem[] = [
 const notebookContextMenuItems: ContextMenuItem[] = [
   { id: 'note', icon: FileText, label: '新建普通笔记' },
   { id: 'markdown', icon: NotebookPen, label: '新建 Markdown' },
+  { id: 'spreadsheet', icon: Table2, label: '新建表格笔记' },
   { id: 'folder', icon: FolderPlus, label: '新建文件夹' },
   { id: 'rename', icon: Pencil, label: '重命名' }
 ]
@@ -87,7 +90,11 @@ function handleMenuSelect(notebookId: string, menuId: string): void {
   } else if (menuId === 'folder') {
     emit('createNotebook', notebookId)
   } else {
-    emit('createNoteInNotebook', notebookId, menuId === 'markdown' ? 'markdown' : 'note')
+    emit(
+      'createNoteInNotebook',
+      notebookId,
+      menuId === 'markdown' ? 'markdown' : menuId === 'spreadsheet' ? 'spreadsheet' : 'note'
+    )
   }
 }
 
@@ -195,6 +202,12 @@ function findNotebookNode(id: string): NoteTreeNode | undefined {
           />
           <NotebookPen
             v-else-if="node.contentFormat === 'markdown'"
+            class="tree-node-icon"
+            :size="16"
+            :stroke-width="1.8"
+          />
+          <Table2
+            v-else-if="node.contentFormat === 'spreadsheet-json'"
             class="tree-node-icon"
             :size="16"
             :stroke-width="1.8"

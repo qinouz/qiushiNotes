@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NotebookSummary } from '@qiushi-notes/shared'
-import { FileText, Folder, FolderPlus, NotebookPen, Plus } from '@lucide/vue'
+import { FileText, Folder, FolderPlus, NotebookPen, Plus, Table2 } from '@lucide/vue'
 import type { FolderContentItem } from './useNoteTree'
 
 defineProps<{
@@ -12,7 +12,7 @@ defineProps<{
 const emit = defineEmits<{
   openNotebook: [id: string]
   openNote: [id: string]
-  createNote: [kind: 'note' | 'markdown']
+  createNote: [kind: 'note' | 'markdown' | 'spreadsheet']
   createNotebook: []
 }>()
 
@@ -58,6 +58,10 @@ function formatUpdatedAt(value: string): string {
             <NotebookPen :size="15" :stroke-width="2" />
             Markdown
           </button>
+          <button class="text-button" type="button" @click="emit('createNote', 'spreadsheet')">
+            <Table2 :size="15" :stroke-width="2" />
+            表格笔记
+          </button>
           <button class="text-button" type="button" @click="emit('createNotebook')">
             <FolderPlus :size="15" :stroke-width="2" />
             文件夹
@@ -72,6 +76,9 @@ function formatUpdatedAt(value: string): string {
         <button class="text-button" type="button" @click="emit('createNote', 'note')">新建笔记</button>
         <button class="text-button" type="button" @click="emit('createNote', 'markdown')">
           新建 Markdown
+        </button>
+        <button class="text-button" type="button" @click="emit('createNote', 'spreadsheet')">
+          新建表格笔记
         </button>
         <button class="text-button" type="button" @click="emit('createNotebook')">新建文件夹</button>
       </div>
@@ -97,6 +104,12 @@ function formatUpdatedAt(value: string): string {
           :size="18"
           :stroke-width="1.8"
         />
+        <Table2
+          v-else-if="item.contentFormat === 'spreadsheet-json'"
+          class="folder-card-icon"
+          :size="18"
+          :stroke-width="1.8"
+        />
         <FileText
           v-else
           class="folder-card-icon"
@@ -107,7 +120,15 @@ function formatUpdatedAt(value: string): string {
           <div class="folder-card-title-row">
             <span class="folder-card-title">{{ item.title }}</span>
             <span class="folder-card-type">
-              {{ item.type === 'notebook' ? '文件夹' : item.contentFormat === 'markdown' ? 'Markdown' : '笔记' }}
+              {{
+                item.type === 'notebook'
+                  ? '文件夹'
+                  : item.contentFormat === 'markdown'
+                    ? 'Markdown'
+                    : item.contentFormat === 'spreadsheet-json'
+                      ? '表格'
+                      : '笔记'
+              }}
             </span>
           </div>
           <span v-if="item.type === 'note'" class="folder-card-preview">

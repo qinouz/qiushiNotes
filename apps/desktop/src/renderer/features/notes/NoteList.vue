@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NoteSummary } from '@qiushi-notes/shared'
-import { FileText } from '@lucide/vue'
+import { FileText, NotebookPen, Table2 } from '@lucide/vue'
 
 defineProps<{
   notes: NoteSummary[]
@@ -26,7 +26,19 @@ const emit = defineEmits<{
         type="button"
         @click="emit('select', note.id)"
       >
-        <FileText class="note-icon" :size="16" :stroke-width="1.8" />
+        <NotebookPen
+          v-if="note.contentFormat === 'markdown'"
+          class="note-icon"
+          :size="16"
+          :stroke-width="1.8"
+        />
+        <Table2
+          v-else-if="note.contentFormat === 'spreadsheet-json'"
+          class="note-icon"
+          :size="16"
+          :stroke-width="1.8"
+        />
+        <FileText v-else class="note-icon" :size="16" :stroke-width="1.8" />
         <div class="note-info">
           <span class="note-title">{{ note.title }}</span>
           <span class="note-preview">{{ note.contentPreview || ' ' }}</span>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { NoteTreeNode } from '@qiushi-notes/shared'
-import { FileText, FolderPlus, NotebookPen, Search } from '@lucide/vue'
+import type { NoteTreeNode, SearchNoteResult } from '@qiushi-notes/shared'
+import { FileText, FolderPlus, NotebookPen, Search, Table2 } from '@lucide/vue'
 import NoteTree from '../features/notebooks/NoteTree.vue'
+import SearchResults from '../features/search/SearchResults.vue'
 import DropdownMenu from '../components/DropdownMenu.vue'
 import type { MenuItem } from '../components/DropdownMenu.vue'
 
@@ -9,8 +10,11 @@ defineProps<{
   nodes: NoteTreeNode[]
   selectedNodeId: string | null
   searchQuery: string
+  searchResults: SearchNoteResult[]
   isLoading: boolean
+  isSearchLoading: boolean
   errorMessage: string
+  searchErrorMessage: string
 }>()
 
 const emit = defineEmits<{
@@ -21,14 +25,15 @@ const emit = defineEmits<{
   renameNotebook: [id: string, name: string]
   renameNote: [id: string, title: string]
   deleteNote: [id: string]
-  createNote: [type: 'note' | 'markdown']
-  createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown']
+  createNote: [type: 'note' | 'markdown' | 'spreadsheet']
+  createNoteInNotebook: [notebookId: string, type: 'note' | 'markdown' | 'spreadsheet']
   'update:searchQuery': [value: string]
 }>()
 
 const newNoteMenuItems: MenuItem[] = [
   { id: 'note', icon: FileText, label: '普通笔记', shortcut: 'Ctrl+N' },
   { id: 'markdown', icon: NotebookPen, label: 'Markdown 笔记' },
+  { id: 'spreadsheet', icon: Table2, label: '表格笔记' },
   { id: 'folder', icon: FolderPlus, label: '文件夹' }
 ]
 
@@ -36,7 +41,7 @@ function handleMenuSelect(id: string): void {
   if (id === 'folder') {
     emit('createNotebook')
   } else {
-    emit('createNote', id === 'markdown' ? 'markdown' : 'note')
+    emit('createNote', id === 'markdown' ? 'markdown' : id === 'spreadsheet' ? 'spreadsheet' : 'note')
   }
 }
 
@@ -55,6 +60,7 @@ function handleSearchInput(event: Event): void {
           type="search"
           :value="searchQuery"
           placeholder="搜索"
+          spellcheck="false"
           @input="handleSearchInput"
         />
       </label>
@@ -71,7 +77,16 @@ function handleSearchInput(event: Event): void {
     </header>
 
     <div class="middle-pane-body">
+      <SearchResults
+        v-if="searchQuery.trim()"
+        :query="searchQuery"
+        :results="searchResults"
+        :is-loading="isSearchLoading"
+        :error-message="searchErrorMessage"
+        @open-note="emit('selectNote', $event)"
+      />
       <NoteTree
+        v-else
         :nodes="nodes"
         :selected-node-id="selectedNodeId"
         :is-loading="isLoading"

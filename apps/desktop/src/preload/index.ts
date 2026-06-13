@@ -12,14 +12,22 @@ const api: QiushiApi = {
   attachments: {
     saveImageFromPaste: (input) => ipcRenderer.invoke('attachments:save-image-from-paste', input)
   },
+  importExport: {
+    exportJson: () => ipcRenderer.invoke('import-export:export-json')
+  },
   notes: {
     // preload 只暴露业务语义，不暴露原始 ipcRenderer。
     // 这样 Vue 页面无法随意调用本地能力，Electron 安全边界更清晰。
     list: (input) => ipcRenderer.invoke('notes:list', input),
+    listTrashed: () => ipcRenderer.invoke('notes:list-trashed'),
     get: (id) => ipcRenderer.invoke('notes:get', id),
     create: (input) => ipcRenderer.invoke('notes:create', input),
     update: (id, patch) => ipcRenderer.invoke('notes:update', id, patch),
-    softDelete: (id) => ipcRenderer.invoke('notes:soft-delete', id)
+    softDelete: (id) => ipcRenderer.invoke('notes:soft-delete', id),
+    restore: (id) => ipcRenderer.invoke('notes:restore', id)
+  },
+  search: {
+    query: (input) => ipcRenderer.invoke('search:query', input)
   },
   notebooks: {
     list: () => ipcRenderer.invoke('notebooks:list'),

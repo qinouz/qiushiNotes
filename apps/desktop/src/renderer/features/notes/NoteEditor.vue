@@ -7,6 +7,7 @@ import Image from '@tiptap/extension-image'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Link from '@tiptap/extension-link'
 import UnderlineExtension from '@tiptap/extension-underline'
+import { TextStyleKit } from '@tiptap/extension-text-style'
 import {
   Bold,
   Code2,
@@ -24,6 +25,7 @@ import {
   Underline,
   Undo2
 } from '@lucide/vue'
+import SpreadsheetEditor from '../spreadsheet/SpreadsheetEditor.vue'
 
 const props = defineProps<{
   selectedNote: NoteDetail | null
@@ -42,6 +44,31 @@ const emit = defineEmits<{
 }>()
 
 const isApplyingEditorContent = ref(false)
+const currentFontSize = ref('')
+const currentLineHeight = ref('')
+
+const fontSizeOptions = [
+  { label: '默认', value: '' },
+  { label: '12', value: '12px' },
+  { label: '14', value: '14px' },
+  { label: '15', value: '15px' },
+  { label: '16', value: '16px' },
+  { label: '18', value: '18px' },
+  { label: '20', value: '20px' },
+  { label: '24', value: '24px' }
+]
+
+const lineHeightOptions = [
+  { label: '默认', value: '' },
+  { label: '紧凑', value: '1.35' },
+  { label: '标准', value: '1.55' },
+  { label: '舒展', value: '1.75' },
+  { label: '宽松', value: '1.95' }
+]
+
+type TextStyleControlEditor = {
+  getAttributes: (name: string) => Record<string, unknown>
+}
 
 // 父组件使用的是 v-model:title / v-model:content。
 // computed 的 get/set 把这套约定包成模板可直接使用的 model。
@@ -51,7 +78,8 @@ const titleModel = computed({
 })
 
 const isMarkdown = computed(() => props.selectedNote?.contentFormat === 'markdown')
-const isRichText = computed(() => Boolean(props.selectedNote) && !isMarkdown.value)
+const isSpreadsheet = computed(() => props.selectedNote?.contentFormat === 'spreadsheet-json')
+const isRichText = computed(() => Boolean(props.selectedNote) && !isMarkdown.value && !isSpreadsheet.value)
 
 const AttachmentImage = Image.extend({
   addAttributes() {
@@ -75,6 +103,14 @@ const richTextEditor = useEditor({
       }
     }),
     UnderlineExtension,
+    TextStyleKit.configure({
+      backgroundColor: false,
+      color: false,
+      fontFamily: false,
+      fontSize: {},
+      lineHeight: {},
+      textStyle: {}
+    }),
     Link.configure({
       autolink: true,
       linkOnPaste: true,
@@ -95,7 +131,8 @@ const richTextEditor = useEditor({
   editorProps: {
     attributes: {
       class: 'rich-editor-content',
-      'aria-label': '正文'
+      'aria-label': '正文',
+      spellcheck: 'false'
     },
     handlePaste(_view, event) {
       if (!isRichText.value) {
@@ -113,7 +150,15 @@ const richTextEditor = useEditor({
       return true
     }
   },
+  onCreate({ editor }) {
+    syncTextStyleControls(editor)
+  },
+  onSelectionUpdate({ editor }) {
+    syncTextStyleControls(editor)
+  },
   onUpdate({ editor }) {
+    syncTextStyleControls(editor)
+
     if (isApplyingEditorContent.value || !isRichText.value) {
       return
     }
@@ -244,6 +289,7 @@ watch(
     })
 
     await nextTick()
+    syncTextStyleControls(richTextEditor.value)
     isApplyingEditorContent.value = false
   },
   { immediate: true }
@@ -255,6 +301,48 @@ onBeforeUnmount(() => {
 
 function handleMarkdownInput(event: Event): void {
   emit('update:content', (event.target as HTMLTextAreaElement).value)
+}
+
+function handleFontSizeChange(event: Event): void {
+  const value = (event.target as HTMLSelectElement).value
+  const editor = richTextEditor.value
+
+  if (!editor) {
+    return
+  }
+
+  const chain = editor.chain().focus()
+  value ? chain.setFontSize(value).run() : chain.unsetFontSize().run()
+  currentFontSize.value = value
+}
+
+function handleLineHeightChange(event: Event): void {
+  const value = (event.target as HTMLSelectElement).value
+  const editor = richTextEditor.value
+
+  if (!editor) {
+    return
+  }
+
+  const chain = editor.chain().focus()
+  value ? chain.setLineHeight(value).run() : chain.unsetLineHeight().run()
+  currentLineHeight.value = value
+}
+
+function syncTextStyleControls(editor: TextStyleControlEditor | null | undefined): void {
+  if (!editor) {
+    currentFontSize.value = ''
+    currentLineHeight.value = ''
+    return
+  }
+
+  const attributes = editor.getAttributes('textStyle') as {
+    fontSize?: string | null
+    lineHeight?: string | null
+  }
+
+  currentFontSize.value = attributes.fontSize ?? ''
+  currentLineHeight.value = attributes.lineHeight ?? ''
 }
 
 async function insertPastedImages(files: File[]): Promise<void> {
@@ -379,11 +467,15 @@ function plainTextToTiptapDocument(content: string): JSONContent {
         aria-label="标题"
         :disabled="!selectedNote"
         placeholder="未命名笔记"
+        spellcheck="false"
       />
 
       <div class="editor-actions">
         <span v-if="isMarkdown" class="note-format-badge">
           Markdown
+        </span>
+        <span v-else-if="isSpreadsheet" class="note-format-badge">
+          表格
         </span>
         <span v-else-if="selectedNote" class="note-format-badge">
           富文本
@@ -401,6 +493,36 @@ function plainTextToTiptapDocument(content: string): JSONContent {
     </header>
 
     <div v-if="selectedNote && isRichText" class="rich-editor-toolbar" aria-label="富文本工具栏">
+      <label class="toolbar-select-label">
+        <span>字号</span>
+        <select
+          class="toolbar-select font-size-select"
+          :value="currentFontSize"
+          aria-label="字号"
+          @change="handleFontSizeChange"
+        >
+          <option v-for="option in fontSizeOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+      </label>
+
+      <label class="toolbar-select-label">
+        <span>行距</span>
+        <select
+          class="toolbar-select line-height-select"
+          :value="currentLineHeight"
+          aria-label="行距"
+          @change="handleLineHeightChange"
+        >
+          <option v-for="option in lineHeightOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+      </label>
+
+      <span class="toolbar-divider" aria-hidden="true"></span>
+
       <button
         v-for="item in toolbarItems"
         :key="item.id"
@@ -422,12 +544,20 @@ function plainTextToTiptapDocument(content: string): JSONContent {
       class="rich-editor-surface"
       :editor="richTextEditor"
     />
+    <SpreadsheetEditor
+      v-else-if="selectedNote && isSpreadsheet"
+      :note-id="selectedNote.id"
+      :title="title"
+      :content="content"
+      @update:content="emit('update:content', $event)"
+    />
 
     <textarea
       v-else-if="selectedNote"
       class="editor-surface"
       aria-label="正文"
       placeholder="开始记录..."
+      spellcheck="false"
       :value="content"
       @input="handleMarkdownInput"
     />

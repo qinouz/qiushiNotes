@@ -26,7 +26,7 @@ const primaryMenuItems: FunctionMenuItem[] = [
 ]
 
 const utilityMenuItems: FunctionMenuItem[] = [
-  { id: 'trash', icon: Trash2, label: '回收站', disabled: true },
+  { id: 'trash', icon: Trash2, label: '回收站', disabled: false },
   { id: 'settings', icon: Settings, label: '设置', disabled: false }
 ]
 </script>

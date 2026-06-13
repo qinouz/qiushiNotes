@@ -2,6 +2,7 @@ import {
   compareDisplayText,
   type NoteContentFormat,
   type NoteDetail,
+  type SearchNoteResult,
   type NoteSummary,
   type NoteTreeNode,
   type NotebookSummary
@@ -9,7 +10,8 @@ import {
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const AUTO_SAVE_DELAY_MS = 800
-type CreateNoteKind = 'note' | 'markdown'
+const SEARCH_DELAY_MS = 220
+type CreateNoteKind = 'note' | 'markdown' | 'spreadsheet'
 
 export type FolderContentItem =
   | {
@@ -35,8 +37,11 @@ export function useNoteTree() {
   const selectedNotebookId = ref<string | null>(null)
   const expandedNotebookIds = ref<Set<string>>(new Set())
   const searchQuery = ref('')
+  const searchResults = ref<SearchNoteResult[]>([])
   const isLoading = ref(false)
+  const isSearchLoading = ref(false)
   const errorMessage = ref('')
+  const searchErrorMessage = ref('')
   const defaultNotebookId = ref<string | null>(null)
   const draftTitle = ref('')
   const draftContent = ref('')
@@ -46,7 +51,9 @@ export function useNoteTree() {
   const saveStatus = ref('未选择笔记')
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
+  let searchTimer: ReturnType<typeof setTimeout> | null = null
   let saveRequestId = 0
+  let searchRequestId = 0
 
   const treeNodes = computed<NoteTreeNode[]>(() =>
     buildTree(notebooks.value, notes.value, expandedNotebookIds.value, searchQuery.value)
@@ -69,6 +76,7 @@ export function useNoteTree() {
 
   onBeforeUnmount(() => {
     clearSaveTimer()
+    clearSearchTimer()
   })
 
   watch([draftTitle, draftContent], () => {
@@ -77,6 +85,10 @@ export function useNoteTree() {
     }
 
     scheduleAutoSave()
+  })
+
+  watch(searchQuery, () => {
+    scheduleSearch()
   })
 
   async function loadTree(preferredNodeId?: string): Promise<void> {
@@ -97,6 +109,10 @@ export function useNoteTree() {
       notes.value = loadedNotes
 
       await restoreSelection(preferredNodeId)
+
+      if (searchQuery.value.trim()) {
+        await runSearchNow()
+      }
     } catch (error) {
       errorMessage.value = getErrorMessage(error, '加载失败')
     } finally {
@@ -430,6 +446,60 @@ export function useNoteTree() {
     }
   }
 
+  function scheduleSearch(): void {
+    clearSearchTimer()
+
+    if (!searchQuery.value.trim()) {
+      searchResults.value = []
+      searchErrorMessage.value = ''
+      isSearchLoading.value = false
+      return
+    }
+
+    searchTimer = setTimeout(() => {
+      void runSearchNow()
+    }, SEARCH_DELAY_MS)
+  }
+
+  async function runSearchNow(): Promise<void> {
+    clearSearchTimer()
+    const query = searchQuery.value.trim()
+
+    if (!query) {
+      searchResults.value = []
+      searchErrorMessage.value = ''
+      isSearchLoading.value = false
+      return
+    }
+
+    const requestId = ++searchRequestId
+    isSearchLoading.value = true
+    searchErrorMessage.value = ''
+
+    try {
+      const results = await window.qiushi.search.query({ query })
+
+      if (requestId === searchRequestId) {
+        searchResults.value = results
+      }
+    } catch (error) {
+      if (requestId === searchRequestId) {
+        searchErrorMessage.value = getErrorMessage(error, '搜索失败')
+      }
+    } finally {
+      if (requestId === searchRequestId) {
+        isSearchLoading.value = false
+      }
+    }
+  }
+
+  function clearSearchTimer(): void {
+    if (searchTimer) {
+      clearTimeout(searchTimer)
+      searchTimer = null
+    }
+  }
+
   return {
     treeNodes,
     selectedNote,
@@ -439,8 +509,11 @@ export function useNoteTree() {
     selectedNotebookPath,
     folderContentItems,
     searchQuery,
+    searchResults,
     isLoading,
+    isSearchLoading,
     errorMessage,
+    searchErrorMessage,
     defaultNotebookId,
     draftTitle,
     draftContent,
@@ -661,10 +734,22 @@ function buildNotebookPath(notebooks: NotebookSummary[], notebookId: string): No
 }
 
 function toContentFormat(kind: CreateNoteKind): NoteContentFormat {
-  return kind === 'markdown' ? 'markdown' : 'tiptap-json'
+  if (kind === 'markdown') {
+    return 'markdown'
+  }
+
+  if (kind === 'spreadsheet') {
+    return 'spreadsheet-json'
+  }
+
+  return 'tiptap-json'
 }
 
 function extractContentPreview(content: string, format: NoteContentFormat): string {
+  if (format === 'spreadsheet-json') {
+    return extractSpreadsheetText(content).slice(0, 120)
+  }
+
   if (format !== 'tiptap-json') {
     return content.slice(0, 120)
   }
@@ -689,4 +774,66 @@ function collectTiptapText(node: unknown): string {
   }
 
   return [ownText, ...record.content.map(collectTiptapText)].filter(Boolean).join(' ')
+}
+
+function extractSpreadsheetText(content: string): string {
+  try {
+    const parsed = JSON.parse(content) as unknown
+    const workbook = getSpreadsheetWorkbook(parsed)
+
+    if (!workbook || typeof workbook !== 'object') {
+      return ''
+    }
+
+    return collectSpreadsheetCellText(workbook).trim()
+  } catch {
+    return ''
+  }
+}
+
+function getSpreadsheetWorkbook(value: unknown): unknown {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as { workbook?: unknown }
+
+  return record.workbook ?? value
+}
+
+function collectSpreadsheetCellText(value: unknown): string {
+  if (!value || typeof value !== 'object') {
+    return ''
+  }
+
+  const record = value as {
+    v?: unknown
+    p?: { body?: { dataStream?: unknown } }
+    sheets?: Record<string, { cellData?: unknown }>
+  }
+  const pieces: string[] = []
+
+  if (typeof record.v === 'string' || typeof record.v === 'number' || typeof record.v === 'boolean') {
+    pieces.push(String(record.v))
+  }
+
+  const dataStream = record.p?.body?.dataStream
+
+  if (typeof dataStream === 'string') {
+    pieces.push(dataStream.replace(/\r?\n/g, ' '))
+  }
+
+  if (record.sheets && typeof record.sheets === 'object') {
+    for (const sheet of Object.values(record.sheets)) {
+      pieces.push(collectSpreadsheetCellText(sheet.cellData))
+    }
+  } else {
+    for (const child of Object.values(record as Record<string, unknown>)) {
+      if (child && typeof child === 'object') {
+        pieces.push(collectSpreadsheetCellText(child))
+      }
+    }
+  }
+
+  return pieces.filter(Boolean).join(' ')
 }
