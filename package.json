@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter desktop dev",
     "build": "pnpm --filter desktop build",
+    "smoke:spreadsheet": "pnpm --filter desktop smoke:spreadsheet",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   }

@@ -20,6 +20,7 @@ import type {
 export interface QiushiApi {
   app: {
     getName: () => string
+    isSmokeTest: () => boolean
   }
   backups: {
     create: () => Promise<BackupResult>

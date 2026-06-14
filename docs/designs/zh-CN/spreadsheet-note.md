@@ -105,7 +105,13 @@ spreadsheet-json
 
 - `pnpm.cmd typecheck`
 - `pnpm.cmd --filter desktop build`
+- `pnpm.cmd --filter desktop smoke:spreadsheet`
 - `git diff --check`
+- 自动化 smoke：
+  - 使用隔离的 `QIUSHI_USER_DATA_DIR` 启动 Electron 构建产物，避免写入真实用户数据。
+  - 通过 Electron `--remote-debugging-port` 连接 renderer，只在 `QIUSHI_SMOKE=1` 时启用测试钩子。
+  - 覆盖新建表格笔记、写入单元格、触发快照、等待外层自动保存、切换到其他笔记再切回、搜索单元格文字。
+  - smoke 钩子只操作当前已经挂载的 Univer workbook，不绕过 `update:content` 和现有 `notes:update` 自动保存链路。
 - 手动验证：
   - 新建表格笔记后出现日报模板。
   - 输入单元格后保存状态变化并回到已保存。

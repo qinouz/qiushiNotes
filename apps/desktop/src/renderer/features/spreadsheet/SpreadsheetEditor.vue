@@ -129,6 +129,7 @@ async function initializeSpreadsheet(): Promise<void> {
     })
     resizeObserver.observe(containerRef.value)
     requestAnimationFrame(() => window.dispatchEvent(new Event('resize')))
+    installSmokeHook()
 
     if (initialWorkbook.legacyValues.length > 0) {
       scheduleSnapshot()
@@ -187,6 +188,34 @@ function flushSnapshot(): void {
   }
 }
 
+function installSmokeHook(): void {
+  if (!window.qiushi.app.isSmokeTest()) {
+    return
+  }
+
+  // 自动化 smoke 需要从 renderer 外部写一个单元格，但不能绕过真实自动保存链路。
+  // 这里仅在 QIUSHI_SMOKE=1 时暴露当前 workbook 的最小操作面，写入后仍走 update:content -> notes:update。
+  window.__qiushiSpreadsheetSmoke = {
+    noteId: props.noteId,
+    setCellValue(row, column, value) {
+      if (!workbook) {
+        throw new Error('表格尚未初始化。')
+      }
+
+      workbook.getActiveSheet().getRange(row, column, 1, 1).setValues([[value]])
+      flushSnapshot()
+      return lastSerializedContent
+    },
+    flush() {
+      flushSnapshot()
+      return lastSerializedContent
+    },
+    getSerializedContent() {
+      return lastSerializedContent
+    }
+  }
+}
+
 function disposeSpreadsheet(): void {
   isDisposing = true
   clearSaveTimer()
@@ -206,6 +235,10 @@ function disposeSpreadsheet(): void {
 
   if (containerRef.value) {
     containerRef.value.innerHTML = ''
+  }
+
+  if (window.__qiushiSpreadsheetSmoke?.noteId === props.noteId) {
+    delete window.__qiushiSpreadsheetSmoke
   }
 }
 

@@ -8,6 +8,7 @@
     "dev": "electron-vite dev",
     "build": "pnpm typecheck && electron-vite build",
     "preview": "electron-vite preview",
+    "smoke:spreadsheet": "pnpm build && node ../../scripts/spreadsheet-smoke.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "lint": "echo \"lint not configured yet\""
   },

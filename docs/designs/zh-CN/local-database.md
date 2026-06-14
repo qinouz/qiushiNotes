@@ -206,6 +206,7 @@ C:\Users\<用户名>\AppData\Roaming\QiushiNotes\
 - UI 和窗口标题使用中文“秋实笔记”。
 - 内部 `userData` 目录使用 ASCII 名 `QiushiNotes`，避免 Windows `cmd.exe` 或脚本工具显示中文路径时乱码。
 - 早期开发版本如果已经创建了 `AppData\Roaming\秋实笔记\notes.db`，应用启动时会在新目录没有数据库的情况下自动迁移一次。
+- 自动化验证使用 `QIUSHI_USER_DATA_DIR` 指向仓库 `.tmp/` 隔离目录时，可以设置 `QIUSHI_SKIP_LEGACY_MIGRATION=1` 跳过旧目录迁移，避免把真实用户数据拷贝进测试目录。
 
 ## IPC / API 边界
 

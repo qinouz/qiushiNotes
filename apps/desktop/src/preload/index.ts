@@ -3,7 +3,8 @@ import type { QiushiApi } from './api'
 
 const api: QiushiApi = {
   app: {
-    getName: () => '秋实笔记'
+    getName: () => '秋实笔记',
+    isSmokeTest: () => process.env.QIUSHI_SMOKE === '1'
   },
   backups: {
     create: () => ipcRenderer.invoke('backups:create'),

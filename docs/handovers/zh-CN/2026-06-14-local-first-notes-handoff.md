@@ -42,6 +42,34 @@
 - 修复前主 canvas 采样区域全透明。
 - 修复后同一区域出现非透明和非白像素，不再有 `createPattern` 异常，也没有 `data:image` CSP 报错。
 
+## 表格保存 smoke 已补
+
+本轮继续补了表格保存链路的自动化 smoke，目标是把“表格能写进本地 SQLite、切换回来仍可见、搜索能搜到”变成可重复验证，而不是只靠手动点几下。
+
+新增内容：
+
+- 新增 `scripts/spreadsheet-smoke.mjs`，会启动 Electron 构建产物，并通过 `--remote-debugging-port` 连接 renderer。
+- 新增 `pnpm.cmd --filter desktop smoke:spreadsheet` 和根目录 `pnpm.cmd smoke:spreadsheet` 脚本。
+- smoke 使用仓库 `.tmp/spreadsheet-smoke-user-data` 作为隔离 `QIUSHI_USER_DATA_DIR`，不写真实用户数据。
+- 新增 `QIUSHI_SKIP_LEGACY_MIGRATION=1`，避免自动化时把旧中文 userData 目录拷贝进测试目录。
+- 表格组件只在 `QIUSHI_SMOKE=1` 时暴露 `window.__qiushiSpreadsheetSmoke` 最小测试钩子。
+- smoke 钩子只写当前 Univer workbook，然后仍走 `update:content -> notes:update -> SQLite/search index` 的真实保存链路。
+- `.tmp/` 已加入 `.gitignore`，避免测试数据库、附件或导出文件误提交。
+
+smoke 覆盖：
+
+- 创建一条 `spreadsheet-json` 表格笔记。
+- 向单元格写入唯一 marker。
+- 等待外层自动保存状态回到“已保存”。
+- 查询 SQLite 中该笔记正文，确认 marker 已进入 `notes.content`。
+- 创建另一条普通笔记并刷新/切换，再切回表格笔记，确认 marker 仍在表格快照中。
+- 在左侧搜索框搜索 marker，确认搜索结果命中该表格笔记。
+
+运行时观察到的非阻断警告：
+
+- Electron 提示 `console-message` 旧参数签名后续会移除，当前来自 `window.ts` 里的 renderer 日志转发。
+- TipTap 提示 `link`、`underline` extension name 重复，当前不影响本轮 smoke，但后续可以单独清理。
+
 ## 调试方式
 
 开发时直接运行：
@@ -78,11 +106,20 @@ pnpm.cmd --filter desktop preview
 $env:QIUSHI_USER_DATA_DIR='E:\myproject\qiushiNotes\.tmp\electron-debug-user-data'
 ```
 
+如果是自动化 smoke，还会额外设置：
+
+```powershell
+$env:QIUSHI_SMOKE='1'
+$env:QIUSHI_SKIP_LEGACY_MIGRATION='1'
+```
+
 ## 已验证命令
 
 ```powershell
+pnpm.cmd -r typecheck
 pnpm.cmd --filter desktop typecheck
 pnpm.cmd --filter desktop build
+pnpm.cmd --filter desktop smoke:spreadsheet
 git diff --check
 ```
 
@@ -91,7 +128,7 @@ git diff --check
 ## 后续建议
 
 - 继续完善表格笔记的真实编辑体验：单元格输入、复制粘贴、行列增删、列宽行高拖拽保存。
-- 给表格保存链路增加更明确的手动验证脚本或自动化 smoke，至少覆盖创建、输入、保存、切换回来仍可见。
+- 在现有表格 smoke 基础上继续扩展真实编辑覆盖，尤其是复制粘贴、行列增删、列宽行高拖拽保存。
 - 表格功能稳定后，再考虑 `.xlsx` 导入导出；当前用户明确说暂不需要。
 - 检查 Univer bundle 体积，当前 renderer 主包较大，后续可以研究代码分割或按需加载表格编辑器。
 - 继续补齐本地导入、导出、备份恢复和回收站的异常路径测试。

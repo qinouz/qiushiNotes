@@ -27,7 +27,9 @@ export function getUserDataPaths(): UserDataPaths {
 export function ensureUserDataPaths(): UserDataPaths {
   const paths = getUserDataPaths()
 
-  migrateLegacyChineseUserDataDir(paths.rootDir)
+  if (process.env.QIUSHI_SKIP_LEGACY_MIGRATION !== '1') {
+    migrateLegacyChineseUserDataDir(paths.rootDir)
+  }
 
   // 启动时只创建目录，不清理目录。
   // 笔记和附件属于用户数据，任何删除/修复都必须由明确功能完成。
